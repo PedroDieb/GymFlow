@@ -1,0 +1,5 @@
+{
+  "name": "GymFlow",
+  "description": "An AI-powered workout tracker and program manager that saves your progress to the cloud.",
+  "requestFramePermissions": []
+}
