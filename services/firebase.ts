@@ -5,6 +5,26 @@ import { Firestore, getFirestore } from 'firebase/firestore';
 // Handle potential parsing errors or undefined globals safely
 const getFirebaseConfig = (): FirebaseOptions | null => {
   try {
+    const env = (import.meta as any).env || {};
+    const rawConfig = env.VITE_FIREBASE_CONFIG;
+    if (rawConfig) {
+      const parsed = JSON.parse(rawConfig);
+      if (parsed?.apiKey && !parsed.apiKey.includes("YOUR_API_KEY")) {
+        return parsed;
+      }
+    }
+
+    if (env.VITE_FIREBASE_API_KEY && !env.VITE_FIREBASE_API_KEY.includes("YOUR_API_KEY")) {
+      return {
+        apiKey: env.VITE_FIREBASE_API_KEY,
+        authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: env.VITE_FIREBASE_APP_ID,
+      };
+    }
+
     // Check if defined globally (injected by platform)
     if (typeof __firebase_config !== 'undefined' && __firebase_config) {
       const parsed = JSON.parse(__firebase_config);
@@ -27,7 +47,7 @@ const getFirebaseConfig = (): FirebaseOptions | null => {
 
 const firebaseConfig = getFirebaseConfig();
 
-export const appId = typeof __app_id !== 'undefined' ? __app_id : 'gymflow-app';
+export const appId = (import.meta as any).env?.VITE_APP_ID || (typeof __app_id !== 'undefined' ? __app_id : 'gymflow-app');
 
 // Initialize Firebase
 let app: FirebaseApp | null = null;

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, Plus, Edit2, Trash2, Calendar, Target, Cloud, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, Edit2, Trash2, Calendar, Target, Cloud, X, Loader2, ClipboardList } from 'lucide-react';
 import { Program, ViewState, Exercise } from '../types';
 import { generateFullProgramData } from '../services/geminiService';
+import { createPhaseOneProgram } from '../data/workoutTemplates';
 
 interface ProgramListProps {
   programs: Program[];
@@ -95,6 +96,12 @@ const ProgramList: React.FC<ProgramListProps> = ({ programs, onCreateProgram, on
     setAiGenLoading(false);
   };
 
+  const handleCreatePhaseOneProgram = () => {
+    const program = createPhaseOneProgram();
+    onCreateProgram(program);
+    onSelectProgram(program.id);
+  };
+
   const openEdit = (prog: Program, e: React.MouseEvent) => {
     e.stopPropagation();
     setNewProgram({ name: prog.name, startDate: prog.startDate, endDate: prog.endDate || '' });
@@ -145,15 +152,24 @@ const ProgramList: React.FC<ProgramListProps> = ({ programs, onCreateProgram, on
         </div>
 
         <div className="space-y-4 mb-8">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-3">
              <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Ativos</h2>
-             <button 
-                onClick={() => setIsAiGeneratorOpen(true)}
-                className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg shadow-purple-500/20 transition-all"
-             >
-                <Sparkles className="w-3 h-3" />
-                Criar com IA
-             </button>
+             <div className="flex gap-2">
+                <button
+                  onClick={handleCreatePhaseOneProgram}
+                  className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"
+                >
+                  <ClipboardList className="w-3 h-3" />
+                  Fase 1
+                </button>
+                <button 
+                  onClick={() => setIsAiGeneratorOpen(true)}
+                  className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg shadow-purple-500/20 transition-all"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Criar com IA
+                </button>
+             </div>
           </div>
           
           {activePrograms.length === 0 && <p className="text-slate-600 text-sm italic">Nenhum programa ativo.</p>}

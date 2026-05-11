@@ -13,3 +13,12 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+if ('serviceWorker' in navigator && (import.meta as any).env?.PROD) {
+  window.addEventListener('load', () => {
+    const baseUrl = (import.meta as any).env?.BASE_URL || '/';
+    navigator.serviceWorker.register(`${baseUrl}sw.js`).catch((error) => {
+      console.warn('Service worker registration failed:', error);
+    });
+  });
+}

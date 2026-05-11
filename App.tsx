@@ -12,21 +12,91 @@ import Profile from './components/Profile';
 import WeeklyReview from './components/WeeklyReview';
 
 // Types
-import { Program, WorkoutNotes, ViewState, UserProfile } from './types';
+import { Program, WorkoutHistory, WorkoutNotes, ViewState, UserProfile } from './types';
+
+const LOCAL_PROGRAMS_KEY = 'gymflow_programs';
+const LOCAL_NOTES_KEY = 'gymflow_notes';
+const LOCAL_PROFILE_KEY = 'gymflow_profile';
+const LOCAL_HISTORY_KEY = 'gymflow_workout_history';
+const LOCAL_NAVIGATION_KEY = 'gymflow_navigation';
+
+type NavigationState = {
+  currentView: ViewState;
+  selectedProgramId: string | null;
+  selectedDayTab: string | null;
+};
+
+type GymFlowBackup = {
+  version: 1;
+  exportedAt: string;
+  programs: Program[];
+  workoutNotes: WorkoutNotes;
+  workoutHistory: WorkoutHistory;
+  userProfile: UserProfile;
+};
+
+const readLocalData = <T,>(key: string, fallback: T): T => {
+  if (typeof localStorage === 'undefined') return fallback;
+
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as T : fallback;
+  } catch (e) {
+    console.warn(`Failed to read ${key} from local storage.`, e);
+    return fallback;
+  }
+};
+
+const writeLocalData = <T,>(key: string, value: T) => {
+  if (typeof localStorage === 'undefined') return;
+
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn(`Failed to save ${key} to local storage.`, e);
+  }
+};
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [programs, setPrograms] = useState<Program[]>([]);
-  const [workoutNotes, setWorkoutNotes] = useState<WorkoutNotes>({});
-  const [userProfile, setUserProfile] = useState<UserProfile>({
+  const [programs, setPrograms] = useState<Program[]>(() => readLocalData<Program[]>(LOCAL_PROGRAMS_KEY, []));
+  const [workoutNotes, setWorkoutNotes] = useState<WorkoutNotes>(() => readLocalData<WorkoutNotes>(LOCAL_NOTES_KEY, {}));
+  const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistory>(() => readLocalData<WorkoutHistory>(LOCAL_HISTORY_KEY, {}));
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => readLocalData<UserProfile>(LOCAL_PROFILE_KEY, {
       displayName: '', weight: '', height: '', age: '', goal: ''
-  });
+  }));
   const [isLoading, setIsLoading] = useState(true);
   
   // Navigation State
-  const [currentView, setCurrentView] = useState<ViewState>('dashboard'); 
-  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
-  const [selectedDayTab, setSelectedDayTab] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<ViewState>(() => (
+    readLocalData<NavigationState>(LOCAL_NAVIGATION_KEY, {
+      currentView: 'dashboard',
+      selectedProgramId: null,
+      selectedDayTab: null,
+    }).currentView
+  ));
+  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(() => (
+    readLocalData<NavigationState>(LOCAL_NAVIGATION_KEY, {
+      currentView: 'dashboard',
+      selectedProgramId: null,
+      selectedDayTab: null,
+    }).selectedProgramId
+  ));
+  const [selectedDayTab, setSelectedDayTab] = useState<string | null>(() => (
+    readLocalData<NavigationState>(LOCAL_NAVIGATION_KEY, {
+      currentView: 'dashboard',
+      selectedProgramId: null,
+      selectedDayTab: null,
+    }).selectedDayTab
+  ));
+
+  useEffect(() => {
+    writeLocalData<NavigationState>(LOCAL_NAVIGATION_KEY, {
+      currentView,
+      selectedProgramId,
+      selectedDayTab,
+    });
+  }, [currentView, selectedProgramId, selectedDayTab]);
 
   // 1. Authentication
   useEffect(() => {
@@ -104,10 +174,21 @@ export default function App() {
           }
       });
 
+      // Listen to Workout History
+      const historyDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'history', 'workout_sessions');
+      const unsubHistory = onSnapshot(historyDoc, (docSnap) => {
+          if (docSnap.exists()) {
+              const loadedHistory = docSnap.data() as WorkoutHistory;
+              setWorkoutHistory(loadedHistory);
+              writeLocalData(LOCAL_HISTORY_KEY, loadedHistory);
+          }
+      });
+
       return () => {
           unsubPrograms();
           unsubNotes();
           unsubProfile();
+          unsubHistory();
       };
     } catch (e) {
       console.error("Firestore sync error:", e);
@@ -118,7 +199,11 @@ export default function App() {
 
   const handleCreateProgram = async (program: Program) => {
     // Optimistic update for immediate feedback
-    setPrograms(prev => [...prev, program]);
+    setPrograms(prev => {
+      const updatedPrograms = [...prev, program];
+      writeLocalData(LOCAL_PROGRAMS_KEY, updatedPrograms);
+      return updatedPrograms;
+    });
 
     if (!user || !isFirebaseInitialized() || !db) {
        console.log("Offline mode: Program saved locally only (in memory).");
@@ -131,7 +216,11 @@ export default function App() {
 
   const handleUpdateProgram = async (program: Program) => {
     // Optimistic Update
-    setPrograms(prev => prev.map(p => p.id === program.id ? program : p));
+    setPrograms(prev => {
+      const updatedPrograms = prev.map(p => p.id === program.id ? program : p);
+      writeLocalData(LOCAL_PROGRAMS_KEY, updatedPrograms);
+      return updatedPrograms;
+    });
     
     if (!user || !isFirebaseInitialized() || !db) return;
     try {
@@ -141,7 +230,11 @@ export default function App() {
 
   const handleDeleteProgram = async (programId: string) => {
     // Optimistic Update
-    setPrograms(prev => prev.filter(p => p.id !== programId));
+    setPrograms(prev => {
+      const updatedPrograms = prev.filter(p => p.id !== programId);
+      writeLocalData(LOCAL_PROGRAMS_KEY, updatedPrograms);
+      return updatedPrograms;
+    });
 
     if (!user || !isFirebaseInitialized() || !db) return;
     try {
@@ -151,6 +244,7 @@ export default function App() {
 
   const handleUpdateNotes = async (newNotes: WorkoutNotes) => {
       setWorkoutNotes(newNotes); // Optimistic
+      writeLocalData(LOCAL_NOTES_KEY, newNotes);
       if (!user || !isFirebaseInitialized() || !db) return;
       try {
           await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'notes', 'general_notes'), newNotes, { merge: true });
@@ -159,10 +253,75 @@ export default function App() {
 
   const handleUpdateProfile = async (profile: UserProfile) => {
     setUserProfile(profile);
+    writeLocalData(LOCAL_PROFILE_KEY, profile);
     if (!user || !isFirebaseInitialized() || !db) return;
     try {
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'main'), profile, { merge: true });
     } catch(e) { console.error("Error saving profile", e); }
+  };
+
+  const handleUpdateWorkoutHistory = async (history: WorkoutHistory) => {
+    setWorkoutHistory(history);
+    writeLocalData(LOCAL_HISTORY_KEY, history);
+    if (!user || !isFirebaseInitialized() || !db) return;
+    try {
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'history', 'workout_sessions'), history, { merge: true });
+    } catch(e) { console.error("Error saving workout history", e); }
+  };
+
+  const handleExportBackup = () => {
+    const backup: GymFlowBackup = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      programs,
+      workoutNotes,
+      workoutHistory,
+      userProfile,
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `gymflow-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportBackup = async (file: File) => {
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text) as Partial<GymFlowBackup>;
+
+      if (!Array.isArray(backup.programs) || !backup.workoutNotes || !backup.workoutHistory || !backup.userProfile) {
+        alert('Backup inválido.');
+        return;
+      }
+
+      setPrograms(backup.programs);
+      setWorkoutNotes(backup.workoutNotes);
+      setWorkoutHistory(backup.workoutHistory);
+      setUserProfile(backup.userProfile);
+      writeLocalData(LOCAL_PROGRAMS_KEY, backup.programs);
+      writeLocalData(LOCAL_NOTES_KEY, backup.workoutNotes);
+      writeLocalData(LOCAL_HISTORY_KEY, backup.workoutHistory);
+      writeLocalData(LOCAL_PROFILE_KEY, backup.userProfile);
+
+      if (user && isFirebaseInitialized() && db) {
+        await Promise.all([
+          ...backup.programs.map(program => setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'programs', program.id), program)),
+          setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'notes', 'general_notes'), backup.workoutNotes, { merge: true }),
+          setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'history', 'workout_sessions'), backup.workoutHistory, { merge: true }),
+          setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'main'), backup.userProfile, { merge: true }),
+        ]);
+      }
+
+      alert('Backup restaurado.');
+    } catch (e) {
+      console.error('Backup import failed:', e);
+      alert('Não consegui restaurar esse backup.');
+    }
   };
 
   // --- Routing Logic ---
@@ -170,12 +329,21 @@ export default function App() {
   const navigateToTracker = (dayTab: string) => { setSelectedDayTab(dayTab); setCurrentView('tracker'); };
 
   const currentProgram = programs.find(p => p.id === selectedProgramId);
+  const routeNeedsMissingProgram = (currentView === 'programDays' || currentView === 'tracker') && !currentProgram;
 
   return (
     <>
-      {currentView === 'dashboard' && <Dashboard onNavigate={setCurrentView} user={user} isLoading={isLoading} />}
+      {currentView === 'dashboard' && !routeNeedsMissingProgram && (
+        <Dashboard
+          onNavigate={setCurrentView}
+          user={user}
+          isLoading={isLoading}
+          onExportBackup={handleExportBackup}
+          onImportBackup={handleImportBackup}
+        />
+      )}
       
-      {currentView === 'profile' && (
+      {currentView === 'profile' && !routeNeedsMissingProgram && (
         <Profile 
           profile={userProfile}
           onUpdateProfile={handleUpdateProfile}
@@ -183,7 +351,7 @@ export default function App() {
         />
       )}
 
-      {currentView === 'weeklyReview' && (
+      {currentView === 'weeklyReview' && !routeNeedsMissingProgram && (
         <WeeklyReview 
           programs={programs}
           notes={workoutNotes}
@@ -192,7 +360,7 @@ export default function App() {
         />
       )}
 
-      {currentView === 'programList' && (
+      {(currentView === 'programList' || routeNeedsMissingProgram) && (
         <ProgramList 
           programs={programs} 
           onCreateProgram={handleCreateProgram}
@@ -218,7 +386,10 @@ export default function App() {
           onUpdateProgram={handleUpdateProgram}
           workoutNotes={workoutNotes}
           onUpdateNotes={handleUpdateNotes}
+          workoutHistory={workoutHistory}
+          onUpdateWorkoutHistory={handleUpdateWorkoutHistory}
           initialTab={selectedDayTab}
+          onActiveTabChange={setSelectedDayTab}
           onBack={() => setCurrentView('programDays')}
         />
       )}

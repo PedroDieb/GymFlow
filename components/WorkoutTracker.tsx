@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Square, Play, Sparkles, Heart, Plus, Check, X, Edit2, Timer, ChevronDown, ChevronUp, Wind, Link as LinkIcon, Unlink, Trash2, Clock, Info, Pause, StopCircle, CheckCircle2, Circle, FileText, Loader2, Youtube, ExternalLink } from 'lucide-react';
-import { Program, WorkoutNotes, Exercise } from '../types';
+import { ArrowLeft, Square, Play, Sparkles, Heart, Plus, Check, X, Edit2, Timer, ChevronDown, ChevronUp, Wind, Link as LinkIcon, Unlink, Trash2, Clock, Info, Pause, StopCircle, CheckCircle2, Circle, FileText, Loader2, Youtube, ExternalLink, CalendarDays } from 'lucide-react';
+import { Program, WorkoutHistory, WorkoutNotes, Exercise, WorkoutSession } from '../types';
 import { generateWorkoutExercises, getExerciseTip } from '../services/geminiService';
 
 interface WorkoutTrackerProps {
@@ -8,11 +8,28 @@ interface WorkoutTrackerProps {
   onUpdateProgram: (p: Program) => void;
   workoutNotes: WorkoutNotes;
   onUpdateNotes: (notes: WorkoutNotes) => void;
+  workoutHistory: WorkoutHistory;
+  onUpdateWorkoutHistory: (history: WorkoutHistory) => void;
   initialTab: string | null;
+  onActiveTabChange: (tab: string) => void;
   onBack: () => void;
 }
 
-const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, initialTab, onBack }) => {
+const getSetCount = (sets: string): number => {
+  const numbers = sets.match(/\d+/g)?.map(Number) || [];
+  return numbers.length ? Math.max(...numbers) : 3;
+};
+
+const formatSessionDate = (isoDate: string): string => {
+  return new Date(isoDate).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, workoutHistory, onUpdateWorkoutHistory, initialTab, onActiveTabChange, onBack }) => {
   const workouts = program.workouts;
   const setWorkouts = (callback: (prev: any) => any) => {
     const updatedWorkouts = callback(workouts);
@@ -20,6 +37,10 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
   };
 
   const [activeTab, setActiveTab] = useState(initialTab || Object.keys(workouts)[0]);
+  useEffect(() => {
+    onActiveTabChange(activeTab);
+  }, [activeTab, onActiveTabChange]);
+
   useEffect(() => { 
       if (!workouts[activeTab]) { 
           const keys = Object.keys(workouts); 
@@ -62,7 +83,6 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
   }, [workoutStartTime]);
 
   const toggleWorkoutTimer = () => { if (workoutStartTime) { setStopWorkoutModal(true); } else { const now = Date.now(); setWorkoutStartTime(now); localStorage.setItem('gymflow_workout_start', now.toString()); } };
-  const confirmStopWorkout = () => { setWorkoutStartTime(null); setElapsedWorkoutTime(0); localStorage.removeItem('gymflow_workout_start'); setStopWorkoutModal(false); };
 
   useEffect(() => {
     if (timer.isRunning && timer.timeLeft > 0) {
@@ -81,6 +101,74 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
 
   const isCardioOrFlex = (tabName: string) => /cardio|flex|alongamento|yoga|aerobico|corrida|mobilidade|esteira/i.test(tabName);
   const getCurrentExercises = () => workouts[activeTab] || [];
+  const getDayHistory = (): WorkoutSession[] => workoutHistory[program.id]?.[activeTab] || [];
+  const getLatestSession = (): WorkoutSession | null => getDayHistory()[0] || null;
+  const getPreviousExercise = (exercise: Exercise) => {
+    const latestSession = getLatestSession();
+    if (!latestSession) return null;
+
+    return latestSession.exercises.find(snapshot => snapshot.exerciseId === exercise.id)
+      || latestSession.exercises.find(snapshot => snapshot.name === exercise.name)
+      || null;
+  };
+
+  const buildPerformedReps = (exercise: Exercise): string[] => {
+    const plannedSetCount = getSetCount(exercise.sets);
+    const currentReps = exercise.performedReps || [];
+    if (currentReps.length >= plannedSetCount) return currentReps;
+    return [...currentReps, ...Array(plannedSetCount - currentReps.length).fill('')];
+  };
+
+  const confirmStopWorkout = () => {
+    const session: WorkoutSession = {
+      id: crypto.randomUUID(),
+      programId: program.id,
+      programName: program.name,
+      dayTab: activeTab,
+      completedAt: new Date().toISOString(),
+      durationSeconds: elapsedWorkoutTime,
+      generalNotes: workoutNotes[`${program.id}_${activeTab}`] || '',
+      exercises: getCurrentExercises().map(ex => ({
+        exerciseId: ex.id,
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: ex.weight,
+        performedReps: buildPerformedReps(ex),
+        notes: ex.notes,
+        rir: ex.rir,
+        cadence: ex.cadence,
+        completed: ex.completed,
+      })),
+    };
+
+    const programHistory = workoutHistory[program.id] || {};
+    const dayHistory = programHistory[activeTab] || [];
+    onUpdateWorkoutHistory({
+      ...workoutHistory,
+      [program.id]: {
+        ...programHistory,
+        [activeTab]: [session, ...dayHistory].slice(0, 100),
+      },
+    });
+
+    const resetWorkouts = {
+      ...workouts,
+      [activeTab]: getCurrentExercises().map(ex => ({
+        ...ex,
+        completed: false,
+        performedReps: Array(getSetCount(ex.sets)).fill(''),
+        notes: '',
+      })),
+    };
+
+    onUpdateProgram({ ...program, workouts: resetWorkouts });
+    onUpdateNotes({ ...workoutNotes, [`${program.id}_${activeTab}`]: '' });
+    setWorkoutStartTime(null);
+    setElapsedWorkoutTime(0);
+    localStorage.removeItem('gymflow_workout_start');
+    setStopWorkoutModal(false);
+  };
 
   const handleAddTab = () => {
     const keys = Object.keys(workouts);
@@ -112,13 +200,55 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
 
   const handleAddExercise = (e: React.FormEvent) => {
     e.preventDefault(); if (!newExercise.name) return;
-    const exercise: Exercise = { id: crypto.randomUUID(), ...newExercise, completed: false, performedReps: Array(parseInt(newExercise.sets)||3).fill(''), notes: '', rir: '', cadence: '', restSeconds: 60, linkedToNext: false };
+    const exercise: Exercise = { id: crypto.randomUUID(), ...newExercise, completed: false, performedReps: Array(getSetCount(newExercise.sets)).fill(''), notes: '', rir: '', cadence: '', restSeconds: 60, linkedToNext: false };
     setWorkouts((prev: any) => ({ ...prev, [activeTab]: [...(prev[activeTab] || []), exercise] }));
     setNewExercise({ name: '', sets: '3', reps: '10-12', weight: '' }); setIsFormOpen(false);
   };
 
   const updateExerciseData = (id: string, field: keyof Exercise, value: any, index: number | null = null) => {
-    setWorkouts((prev: any) => ({ ...prev, [activeTab]: prev[activeTab].map((ex: Exercise) => { if (ex.id !== id) return ex; if (field === 'performedReps' && index !== null) { const newReps = [...(ex.performedReps || [])]; newReps[index] = value; return { ...ex, performedReps: newReps }; } return { ...ex, [field]: value }; }) }));
+    setWorkouts((prev: any) => ({
+      ...prev,
+      [activeTab]: prev[activeTab].map((ex: Exercise) => {
+        if (ex.id !== id) return ex;
+
+        if (field === 'performedReps' && index !== null) {
+          const newReps = buildPerformedReps(ex);
+          newReps[index] = value;
+          return { ...ex, performedReps: newReps };
+        }
+
+        if (field === 'sets') {
+          const updatedExercise = { ...ex, sets: value };
+          const setCount = getSetCount(value);
+          const currentReps = ex.performedReps || [];
+          const performedReps = Array.from({ length: setCount }, (_, repIndex) => currentReps[repIndex] || '');
+          return { ...updatedExercise, performedReps };
+        }
+
+        return { ...ex, [field]: value };
+      })
+    }));
+  };
+
+  const addPerformedSet = (exercise: Exercise) => {
+    const performedReps = buildPerformedReps(exercise);
+    setWorkouts((prev: any) => ({
+      ...prev,
+      [activeTab]: prev[activeTab].map((ex: Exercise) => (
+        ex.id === exercise.id ? { ...ex, performedReps: [...performedReps, ''], sets: String(performedReps.length + 1) } : ex
+      ))
+    }));
+  };
+
+  const removePerformedSet = (exercise: Exercise) => {
+    const performedReps = buildPerformedReps(exercise);
+    if (performedReps.length <= 1) return;
+    setWorkouts((prev: any) => ({
+      ...prev,
+      [activeTab]: prev[activeTab].map((ex: Exercise) => (
+        ex.id === exercise.id ? { ...ex, performedReps: performedReps.slice(0, -1), sets: String(performedReps.length - 1) } : ex
+      ))
+    }));
   };
 
   const toggleComplete = (id: string) => { setWorkouts((prev: any) => ({ ...prev, [activeTab]: prev[activeTab].map((ex: Exercise) => ex.id === id ? { ...ex, completed: !ex.completed } : ex) })); };
@@ -139,7 +269,7 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
               reps: ex.reps || "12",
               weight: ex.weight || "0",
               completed:false, 
-              performedReps: Array(parseInt(ex.sets as string)||3).fill(''), 
+              performedReps: Array(getSetCount(ex.sets as string)).fill(''), 
               notes:'', rir:'', 
               cadence: ex.cadence||'', 
               restSeconds: ex.restSeconds||60, 
@@ -165,6 +295,11 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
   };
 
   const calculateProgress = () => { const c = getCurrentExercises(); if(!c.length) return 0; return Math.round((c.filter(ex=>ex.completed).length/c.length)*100); };
+  const hasWorkoutData = () => getCurrentExercises().some(ex => (
+    ex.completed ||
+    (ex.performedReps || []).some(Boolean) ||
+    !!ex.notes
+  )) || !!workoutNotes[`${program.id}_${activeTab}`];
 
   const handleNotesChange = (val: string) => {
       onUpdateNotes({ ...workoutNotes, [`${program.id}_${activeTab}`]: val });
@@ -216,12 +351,18 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
             <span className="text-2xl font-bold text-white">{calculateProgress()}%</span>
           </div>
           <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden"><div className={`h-3 rounded-full transition-all duration-500 ease-out ${isCardioOrFlex(activeTab) ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${calculateProgress()}%` }}></div></div>
+          {!workoutStartTime && hasWorkoutData() && (
+            <button onClick={() => setStopWorkoutModal(true)} className="mt-3 w-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 py-2 rounded-lg text-sm font-bold">
+              Salvar sessão na planilha
+            </button>
+          )}
         </div>
 
         <div className="space-y-0">
           {getCurrentExercises().map((ex: Exercise, index: number) => {
             const isExpanded = expandedExerciseId === ex.id;
-            const setsArray = ex.performedReps && ex.performedReps.length > 0 ? ex.performedReps : Array(parseInt(ex.sets) || 3).fill('');
+            const setsArray = buildPerformedReps(ex);
+            const previousExercise = getPreviousExercise(ex);
             const isLinkedToNext = ex.linkedToNext;
             const isLinkedFromPrev = index > 0 && getCurrentExercises()[index - 1].linkedToNext;
             let containerClasses = "group border-x border-slate-700 bg-slate-800 transition-all duration-200 overflow-hidden relative ";
@@ -252,9 +393,41 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
                 {isExpanded && (
                   <div className={`px-4 pb-4 border-t border-slate-700/50 bg-slate-900/30 ${isLinkedFromPrev || isLinkedToNext ? 'pl-6' : ''}`}>
                     <div className="flex gap-2 py-3 overflow-x-auto scrollbar-hide"><button onClick={() => handleGetTip(ex.name, 'breathing')} className="flex items-center gap-1.5 bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-500/20 whitespace-nowrap"><Wind className="w-3 h-3" /> Respiração</button><button onClick={() => toggleSupersetLink(index)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${ex.linkedToNext ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>{ex.linkedToNext ? <Unlink className="w-3 h-3" /> : <LinkIcon className="w-3 h-3" />}{ex.linkedToNext ? 'Desagrupar' : 'Combinar Próximo'}</button><button onClick={() => removeExercise(ex.id)} className="flex items-center gap-1.5 bg-red-500/10 text-red-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-500/20 ml-auto whitespace-nowrap"><Trash2 className="w-3 h-3" /></button></div>
-                    <div className="mb-4"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Reps Realizadas</label><div className="flex flex-wrap gap-2">{setsArray.map((rep, idx) => (<div key={idx} className="flex flex-col items-center gap-1"><span className="text-[10px] text-slate-500">S{idx+1}</span><input type="number" placeholder="-" value={rep} onChange={(e) => updateExerciseData(ex.id, 'performedReps', e.target.value, idx)} className="w-12 h-10 bg-slate-800 border border-slate-600 rounded-lg text-center text-white focus:border-emerald-500 focus:outline-none"/></div>))}</div></div>
-                    <div className="grid grid-cols-4 gap-2 mb-3"><div><label className="block text-[10px] font-bold text-slate-500 uppercase">Carga</label><input type="number" placeholder={ex.weight} onChange={(e) => updateExerciseData(ex.id, 'weight', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" /></div><div><div className="flex items-center justify-center gap-1 mb-1"><label className="block text-[10px] font-bold text-slate-500 uppercase">RIR</label><Info className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setRirModalOpen(true)} /></div><input type="text" placeholder="-" value={ex.rir || ''} onChange={(e) => updateExerciseData(ex.id, 'rir', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-orange-500 focus:outline-none" /></div><div><div className="flex items-center justify-center gap-1 mb-1"><label className="block text-[10px] font-bold text-slate-500 uppercase">Tempo</label><Clock className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setTempoModalOpen(true)} /></div><input type="text" placeholder="3010" value={ex.cadence || ''} onChange={(e) => updateExerciseData(ex.id, 'cadence', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" /></div><div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex justify-center items-center gap-1"><Timer className="w-3 h-3"/> Descanso</label><div className="relative"><input type="number" value={ex.restSeconds} onChange={(e) => updateExerciseData(ex.id, 'restSeconds', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" /><span className="absolute right-1 top-2 text-[10px] text-slate-500">s</span></div></div></div>
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Séries alvo</label>
+                        <input type="text" value={ex.sets} onChange={(e) => updateExerciseData(ex.id, 'sets', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Reps alvo</label>
+                        <input type="text" value={ex.reps} onChange={(e) => updateExerciseData(ex.id, 'reps', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" />
+                      </div>
+                    </div>
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Reps Realizadas</label>
+                        <div className="flex gap-1">
+                          <button onClick={() => removePerformedSet(ex)} className="px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-bold">- série</button>
+                          <button onClick={() => addPerformedSet(ex)} className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 text-xs font-bold">+ série</button>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">{setsArray.map((rep, idx) => (<div key={idx} className="flex flex-col items-center gap-1"><span className="text-[10px] text-slate-500">S{idx+1}</span><input type="number" placeholder="-" value={rep} onChange={(e) => updateExerciseData(ex.id, 'performedReps', e.target.value, idx)} className="w-12 h-10 bg-slate-800 border border-slate-600 rounded-lg text-center text-white focus:border-emerald-500 focus:outline-none"/></div>))}</div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 mb-3"><div><label className="block text-[10px] font-bold text-slate-500 uppercase">Carga</label><input type="number" value={ex.weight || ''} onChange={(e) => updateExerciseData(ex.id, 'weight', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" /></div><div><div className="flex items-center justify-center gap-1 mb-1"><label className="block text-[10px] font-bold text-slate-500 uppercase">RIR</label><Info className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setRirModalOpen(true)} /></div><input type="text" placeholder="-" value={ex.rir || ''} onChange={(e) => updateExerciseData(ex.id, 'rir', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-orange-500 focus:outline-none" /></div><div><div className="flex items-center justify-center gap-1 mb-1"><label className="block text-[10px] font-bold text-slate-500 uppercase">Tempo</label><Clock className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setTempoModalOpen(true)} /></div><input type="text" placeholder="3010" value={ex.cadence || ''} onChange={(e) => updateExerciseData(ex.id, 'cadence', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" /></div><div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex justify-center items-center gap-1"><Timer className="w-3 h-3"/> Descanso</label><div className="relative"><input type="number" value={ex.restSeconds} onChange={(e) => updateExerciseData(ex.id, 'restSeconds', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" /><span className="absolute right-1 top-2 text-[10px] text-slate-500">s</span></div></div></div>
                     <textarea placeholder="Anotações..." value={ex.notes || ''} onChange={(e) => updateExerciseData(ex.id, 'notes', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-white focus:border-purple-500 focus:outline-none h-16 resize-none"/>
+                    {previousExercise && (
+                      <div className="mt-3 bg-slate-800/70 border border-slate-700 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase mb-2">
+                          <CalendarDays className="w-3 h-3 text-emerald-400" />
+                          Sessão anterior
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                          <div><span className="text-slate-500">Carga</span><div className="font-bold text-white">{previousExercise.weight || '-'} kg</div></div>
+                          <div><span className="text-slate-500">Reps</span><div className="font-bold text-white">{previousExercise.performedReps.filter(Boolean).join(' / ') || '-'}</div></div>
+                        </div>
+                        {previousExercise.notes && <p className="text-xs text-slate-400 mt-2 italic">{previousExercise.notes}</p>}
+                      </div>
+                    )}
                   </div>
                 )}
                 {isLinkedToNext && <div className="absolute bottom-[-10px] left-1/2 -translate-x-1/2 z-20 bg-slate-800 border border-slate-600 rounded-full p-1 shadow-lg"><LinkIcon className="w-3 h-3 text-emerald-500" /></div>}
@@ -266,6 +439,38 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
         <div className="mt-8 mb-4">
            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4"><label className="flex items-center gap-2 text-sm font-bold text-slate-400 mb-2"><FileText className="w-4 h-4 text-emerald-500" /> Anotações Gerais - {activeTab}</label><textarea placeholder="Como você se sentiu hoje?" value={workoutNotes[`${program.id}_${activeTab}`] || ''} onChange={(e) => handleNotesChange(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-emerald-500 h-24 resize-none"/></div>
         </div>
+
+        {getDayHistory().length > 0 && (
+          <div className="mb-4 bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-slate-300">
+                <CalendarDays className="w-4 h-4 text-emerald-500" />
+                Planilha de treinos
+              </h3>
+              <span className="text-xs text-slate-500">{getDayHistory().length} sessões</span>
+            </div>
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {getDayHistory().map(session => (
+                <div key={session.id} className="bg-slate-900 border border-slate-700 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-bold text-white">{formatSessionDate(session.completedAt)}</div>
+                    <div className="text-xs text-slate-500">{formatWorkoutTime(session.durationSeconds)}</div>
+                  </div>
+                  <div className="space-y-2">
+                    {session.exercises.map(ex => (
+                      <div key={`${session.id}_${ex.exerciseId}`} className="grid grid-cols-[1fr_auto_auto] gap-2 text-xs items-center">
+                        <span className="text-slate-300 truncate">{ex.name}</span>
+                        <span className="text-emerald-300 font-bold">{ex.weight || '-'}kg</span>
+                        <span className="text-slate-400">{ex.performedReps.filter(Boolean).join('/') || '-'}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {session.generalNotes && <p className="text-xs text-slate-500 italic mt-2">{session.generalNotes}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {Object.keys(workouts).length > 1 && <div className="py-4 flex justify-center"><button onClick={() => setDeleteTabModal(true)} className="flex items-center gap-2 text-xs font-medium text-red-400/60 hover:text-red-400 px-4 py-2 transition-all"><Trash2 className="w-4 h-4" /> Excluir Aba "{activeTab}"</button></div>}
         <div className="h-20"></div>
@@ -280,7 +485,7 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
       {tempoModalOpen && <div className="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center" onClick={() => setTempoModalOpen(false)}><div className="bg-slate-800 p-6 rounded-xl max-w-xs"><h3 className="text-white font-bold mb-2">Cadência (Tempo)</h3><p className="text-slate-400 text-sm">3-0-1-0 significa:<br/>3s descendo<br/>0s pausa<br/>1s subindo<br/>0s pausa</p></div></div>}
       {isAiModalOpen && <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-slate-800 w-full max-w-md rounded-2xl border border-purple-500/30 p-6"><div className="flex justify-between mb-4"><h3 className="text-white font-bold">Coach IA</h3><button onClick={()=>setIsAiModalOpen(false)} className="text-slate-400"><X/></button></div>{aiLoading ? <Loader2 className="animate-spin mx-auto text-purple-500 w-8 h-8"/> : (<form onSubmit={generateAIWorkout} className="space-y-4"><input placeholder="Objetivo" value={aiParams.focus} onChange={e=>setAiParams({...aiParams, focus: e.target.value})} className="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-white"/><button type="submit" className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl">Gerar</button></form>)}</div></div>}
       {tipModal.isOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80" onClick={() => setTipModal({ ...tipModal, isOpen: false })}><div className="bg-slate-800 w-full max-w-sm rounded-2xl p-6 relative" onClick={e => e.stopPropagation()}><h4 className="text-lg font-bold text-white mb-2">{tipModal.title}</h4>{tipModal.loading ? <Loader2 className="animate-spin text-slate-400"/> : <p className="text-slate-300 text-sm">{tipModal.text}</p>}<button onClick={() => setTipModal({ ...tipModal, isOpen: false })} className="absolute top-4 right-4 text-slate-500"><X className="w-5 h-5" /></button></div></div>}
-      {stopWorkoutModal && <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"><div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm"></div><div className="bg-slate-800 w-full max-w-sm rounded-2xl border border-red-500/30 shadow-2xl relative z-10 p-6"><div className="flex flex-col items-center text-center mb-6"><div className="bg-red-500/10 p-4 rounded-full mb-4"><StopCircle className="w-8 h-8 text-red-500" /></div><h3 className="text-xl font-bold text-white mb-2">Finalizar Treino?</h3><p className="text-slate-400 text-sm">Tempo total: <span className="text-white font-bold">{formatWorkoutTime(elapsedWorkoutTime)}</span>.</p></div><div className="flex gap-3"><button onClick={() => setStopWorkoutModal(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-xl">Cancelar</button><button onClick={confirmStopWorkout} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl">Sim, Finalizar</button></div></div></div>}
+      {stopWorkoutModal && <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"><div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm"></div><div className="bg-slate-800 w-full max-w-sm rounded-2xl border border-red-500/30 shadow-2xl relative z-10 p-6"><div className="flex flex-col items-center text-center mb-6"><div className="bg-red-500/10 p-4 rounded-full mb-4"><StopCircle className="w-8 h-8 text-red-500" /></div><h3 className="text-xl font-bold text-white mb-2">Finalizar Treino?</h3><p className="text-slate-400 text-sm">Tempo total: <span className="text-white font-bold">{formatWorkoutTime(elapsedWorkoutTime)}</span>. A sessão vai para a planilha e o treino fica pronto para a próxima vez.</p></div><div className="flex gap-3"><button onClick={() => setStopWorkoutModal(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-xl">Cancelar</button><button onClick={confirmStopWorkout} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl">Salvar Sessão</button></div></div></div>}
       {deleteTabModal && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4"><div className="bg-slate-800 w-full max-w-sm rounded-2xl border border-red-500/30 shadow-2xl p-6"><h3 className="text-xl font-bold text-white mb-2 text-center">Excluir {activeTab}?</h3><div className="flex gap-3 mt-4"><button onClick={() => setDeleteTabModal(false)} className="flex-1 bg-slate-700 text-white py-3 rounded-xl">Cancelar</button><button onClick={handleDeleteTab} className="flex-1 bg-red-500 text-white font-bold py-3 rounded-xl">Sim, Excluir</button></div></div></div>}
       
       {/* VIDEO MODAL */}

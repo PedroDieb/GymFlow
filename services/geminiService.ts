@@ -1,13 +1,37 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Exercise, Program, WorkoutNotes, WeeklyReviewData, UserProfile } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const BASIC_MODEL = 'gemini-2.5-flash';
+
+const getApiKey = (): string => {
+  const env = (import.meta as any).env;
+  const browserKey = env?.VITE_GEMINI_API_KEY || env?.GEMINI_API_KEY || env?.API_KEY;
+  const nodeKey =
+    typeof process !== 'undefined'
+      ? process.env?.GEMINI_API_KEY || process.env?.API_KEY
+      : '';
+
+  return browserKey || nodeKey || '';
+};
+
+let aiClient: GoogleGenAI | null = null;
+
+const getAiClient = (): GoogleGenAI => {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error('Gemini API key is not configured.');
+  }
+
+  if (!aiClient) {
+    aiClient = new GoogleGenAI({ apiKey });
+  }
+
+  return aiClient;
+};
 
 export const getMealSuggestion = async (): Promise<string> => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: BASIC_MODEL,
       contents: "Sugira uma refeição pós-treino rápida, saudável e saborosa para hipertrofia/recuperação. Max 20 palavras. Em Português.",
     });
@@ -27,7 +51,7 @@ export const generateFullProgramData = async (goal: string, days: string, level:
         Cada exercise deve ter: name, sets (string num), reps (string range), weight (string '0'), cadence (string '2020'), restSeconds (number).`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: BASIC_MODEL,
       contents: prompt,
       config: {
@@ -58,7 +82,7 @@ export const generateWorkoutExercises = async (context: string, focus: string, l
   const prompt = `Crie 5-7 exercícios. Contexto: ${context}. Objetivo: ${focus}. Nível: ${level}.`;
   
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: BASIC_MODEL,
       contents: prompt,
       config: {
@@ -94,7 +118,7 @@ export const getExerciseTip = async (name: string, type: 'breathing' | 'techniqu
     : `Dica técnica essencial e curta sobre a execução de: ${name}.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: BASIC_MODEL,
       contents: prompt,
     });
@@ -159,7 +183,7 @@ export const generateWeeklyAnalysis = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: BASIC_MODEL,
       contents: prompt,
       config: {

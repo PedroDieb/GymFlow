@@ -30,6 +30,36 @@ export interface WorkoutNotes {
   [key: string]: string;
 }
 
+export interface CompletedExerciseSnapshot {
+  exerciseId: string;
+  name: string;
+  sets: string;
+  reps: string;
+  weight: string;
+  performedReps: string[];
+  notes: string;
+  rir: string;
+  cadence: string;
+  completed: boolean;
+}
+
+export interface WorkoutSession {
+  id: string;
+  programId: string;
+  programName: string;
+  dayTab: string;
+  completedAt: string;
+  durationSeconds: number;
+  generalNotes: string;
+  exercises: CompletedExerciseSnapshot[];
+}
+
+export interface WorkoutHistory {
+  [programId: string]: {
+    [dayTab: string]: WorkoutSession[];
+  };
+}
+
 export interface UserProfile {
   displayName: string;
   weight: string;

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Dumbbell, Cloud, Utensils, Sparkles, Loader2, Trophy, User, Calendar, Settings, CheckCircle2, AlertTriangle, BarChart3 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Dumbbell, Cloud, Utensils, Sparkles, Loader2, Trophy, User, Settings, CheckCircle2, AlertTriangle, BarChart3, Download, Upload } from 'lucide-react';
 import { getMealSuggestion } from '../services/geminiService';
 import { ViewState } from '../types';
 
@@ -7,11 +7,14 @@ interface DashboardProps {
   onNavigate: (view: ViewState) => void;
   user: any;
   isLoading: boolean;
+  onExportBackup: () => void;
+  onImportBackup: (file: File) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onNavigate, user, isLoading }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onNavigate, user, isLoading, onExportBackup, onImportBackup }) => {
   const [dailyTip, setDailyTip] = useState('');
   const [tipLoading, setTipLoading] = useState(false);
+  const backupInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleGetMeal = async () => {
     setTipLoading(true);
@@ -30,7 +33,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, user, isLoading }) =>
           </div>
         </div>
         <h1 className="text-3xl font-bold text-white tracking-tight">GymFlow</h1>
-        <p className="text-slate-400 mt-2">Evolução salva na nuvem</p>
+        <p className="text-slate-400 mt-2">Histórico, carga e evolução por treino</p>
         
         {isLoading && <p className="text-xs text-blue-400 mt-4 animate-pulse">Conectando ao servidor...</p>}
         {!isLoading && !user && (
@@ -101,6 +104,34 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, user, isLoading }) =>
           <span className="font-bold text-lg text-slate-500">Config</span>
         </button>
       </div>
+
+      <div className="w-full max-w-md mt-4 grid grid-cols-2 gap-3">
+        <button
+          onClick={onExportBackup}
+          className="bg-slate-800 border border-slate-700 hover:border-emerald-500/50 rounded-xl p-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-300"
+        >
+          <Download className="w-4 h-4 text-emerald-400" />
+          Backup
+        </button>
+        <button
+          onClick={() => backupInputRef.current?.click()}
+          className="bg-slate-800 border border-slate-700 hover:border-blue-500/50 rounded-xl p-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-300"
+        >
+          <Upload className="w-4 h-4 text-blue-400" />
+          Restaurar
+        </button>
+        <input
+          ref={backupInputRef}
+          type="file"
+          accept="application/json"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) onImportBackup(file);
+            event.target.value = '';
+          }}
+        />
+      </div>
       
       <div className="mt-8 text-xs text-slate-600 flex items-center gap-1">
         {user ? (
@@ -111,7 +142,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, user, isLoading }) =>
         ) : (
           <>
             <Cloud className="w-3 h-3 text-slate-600" />
-            Armazenamento Local (Temporário)
+            Armazenamento neste navegador
           </>
         )}
       </div>
