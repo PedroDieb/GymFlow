@@ -76,7 +76,7 @@ export interface WeeklyReviewData {
   motivationalQuote: string;
 }
 
-export type ViewState = 'dashboard' | 'programList' | 'programDays' | 'tracker' | 'profile' | 'weeklyReview';
+export type ViewState = 'dashboard' | 'programList' | 'programDays' | 'tracker' | 'profile' | 'weeklyReview' | 'workoutCalendar';
 
 // Global declarations for the environment variables injected by the platform
 declare global {

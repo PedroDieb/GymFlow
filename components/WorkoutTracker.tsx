@@ -12,6 +12,7 @@ interface WorkoutTrackerProps {
   onUpdateWorkoutHistory: (history: WorkoutHistory) => void;
   initialTab: string | null;
   onActiveTabChange: (tab: string) => void;
+  onOpenCalendar: () => void;
   onBack: () => void;
 }
 
@@ -29,7 +30,7 @@ const formatSessionDate = (isoDate: string): string => {
   });
 };
 
-const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, workoutHistory, onUpdateWorkoutHistory, initialTab, onActiveTabChange, onBack }) => {
+const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, workoutHistory, onUpdateWorkoutHistory, initialTab, onActiveTabChange, onOpenCalendar, onBack }) => {
   const workouts = program.workouts;
   const setWorkouts = (callback: (prev: any) => any) => {
     const updatedWorkouts = callback(workouts);
@@ -300,6 +301,17 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
     (ex.performedReps || []).some(Boolean) ||
     !!ex.notes
   )) || !!workoutNotes[`${program.id}_${activeTab}`];
+  const latestSession = getLatestSession();
+  const latestSessionVolume = latestSession?.exercises.reduce((total, exercise) => {
+    const weight = parseFloat(String(exercise.weight || '').replace(',', '.'));
+    if (!Number.isFinite(weight)) return total;
+    const reps = exercise.performedReps.reduce((repTotal, rep) => {
+      const parsedRep = parseFloat(String(rep || '').replace(',', '.'));
+      return Number.isFinite(parsedRep) ? repTotal + parsedRep : repTotal;
+    }, 0);
+    return total + (weight * reps);
+  }, 0) || 0;
+  const latestCompletedCount = latestSession?.exercises.filter(ex => ex.completed).length || 0;
 
   const handleNotesChange = (val: string) => {
       onUpdateNotes({ ...workoutNotes, [`${program.id}_${activeTab}`]: val });
@@ -440,37 +452,62 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4"><label className="flex items-center gap-2 text-sm font-bold text-slate-400 mb-2"><FileText className="w-4 h-4 text-emerald-500" /> Anotações Gerais - {activeTab}</label><textarea placeholder="Como você se sentiu hoje?" value={workoutNotes[`${program.id}_${activeTab}`] || ''} onChange={(e) => handleNotesChange(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-emerald-500 h-24 resize-none"/></div>
         </div>
 
-        {getDayHistory().length > 0 && (
-          <div className="mb-4 bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="flex items-center gap-2 text-sm font-bold text-slate-300">
-                <CalendarDays className="w-4 h-4 text-emerald-500" />
-                Planilha de treinos
-              </h3>
-              <span className="text-xs text-slate-500">{getDayHistory().length} sessões</span>
-            </div>
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-              {getDayHistory().map(session => (
-                <div key={session.id} className="bg-slate-900 border border-slate-700 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm font-bold text-white">{formatSessionDate(session.completedAt)}</div>
-                    <div className="text-xs text-slate-500">{formatWorkoutTime(session.durationSeconds)}</div>
-                  </div>
-                  <div className="space-y-2">
-                    {session.exercises.map(ex => (
-                      <div key={`${session.id}_${ex.exerciseId}`} className="grid grid-cols-[1fr_auto_auto] gap-2 text-xs items-center">
-                        <span className="text-slate-300 truncate">{ex.name}</span>
-                        <span className="text-emerald-300 font-bold">{ex.weight || '-'}kg</span>
-                        <span className="text-slate-400">{ex.performedReps.filter(Boolean).join('/') || '-'}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {session.generalNotes && <p className="text-xs text-slate-500 italic mt-2">{session.generalNotes}</p>}
-                </div>
-              ))}
-            </div>
+        <div className="mb-4 bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-300">
+              <CalendarDays className="w-4 h-4 text-emerald-500" />
+              Ultimo treino
+            </h3>
+            <button onClick={onOpenCalendar} className="text-xs bg-slate-900 border border-slate-700 text-emerald-300 px-3 py-1.5 rounded-lg font-bold">
+              Calendario
+            </button>
           </div>
-        )}
+
+          {latestSession ? (
+            <>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-2">
+                  <span className="block text-[10px] text-slate-500 uppercase font-bold">Data</span>
+                  <span className="text-xs font-bold text-white">{formatSessionDate(latestSession.completedAt)}</span>
+                </div>
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-2">
+                  <span className="block text-[10px] text-slate-500 uppercase font-bold">Tempo</span>
+                  <span className="text-xs font-bold text-white">{formatWorkoutTime(latestSession.durationSeconds)}</span>
+                </div>
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-2">
+                  <span className="block text-[10px] text-slate-500 uppercase font-bold">Volume</span>
+                  <span className="text-xs font-bold text-white">{latestSessionVolume ? Math.round(latestSessionVolume) : '-'}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                <span>{latestCompletedCount}/{latestSession.exercises.length} exercicios marcados</span>
+                <span>{getDayHistory().length} sessoes no historico</span>
+              </div>
+
+              <div className="space-y-2">
+                {latestSession.exercises.slice(0, 6).map(ex => (
+                  <div key={`${latestSession.id}_${ex.exerciseId}`} className="grid grid-cols-[1fr_auto_auto] gap-2 text-xs items-center">
+                    <span className="text-slate-300 truncate">{ex.name}</span>
+                    <span className="text-emerald-300 font-bold">{ex.weight || '-'}kg</span>
+                    <span className="text-slate-400">{ex.performedReps.filter(Boolean).join('/') || '-'}</span>
+                  </div>
+                ))}
+              </div>
+              {latestSession.exercises.length > 6 && (
+                <p className="text-xs text-slate-500 mt-2">+{latestSession.exercises.length - 6} exercicios no calendario</p>
+              )}
+              {latestSession.generalNotes && <p className="text-xs text-slate-500 italic mt-3">{latestSession.generalNotes}</p>}
+            </>
+          ) : (
+            <div className="py-6 text-center">
+              <p className="text-sm text-slate-500 mb-3">Quando voce salvar este treino, ele aparece aqui e no calendario.</p>
+              <button onClick={onOpenCalendar} className="text-sm bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-4 py-2 rounded-lg font-bold">
+                Abrir calendario
+              </button>
+            </div>
+          )}
+        </div>
 
         {Object.keys(workouts).length > 1 && <div className="py-4 flex justify-center"><button onClick={() => setDeleteTabModal(true)} className="flex items-center gap-2 text-xs font-medium text-red-400/60 hover:text-red-400 px-4 py-2 transition-all"><Trash2 className="w-4 h-4" /> Excluir Aba "{activeTab}"</button></div>}
         <div className="h-20"></div>

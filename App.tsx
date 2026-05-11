@@ -10,6 +10,7 @@ import ProgramDaysManager from './components/ProgramDaysManager';
 import WorkoutTracker from './components/WorkoutTracker';
 import Profile from './components/Profile';
 import WeeklyReview from './components/WeeklyReview';
+import WorkoutCalendar from './components/WorkoutCalendar';
 
 // Types
 import { Program, WorkoutHistory, WorkoutNotes, ViewState, UserProfile } from './types';
@@ -327,6 +328,11 @@ export default function App() {
   // --- Routing Logic ---
   const navigateToProgramDays = (progId: string) => { setSelectedProgramId(progId); setCurrentView('programDays'); };
   const navigateToTracker = (dayTab: string) => { setSelectedDayTab(dayTab); setCurrentView('tracker'); };
+  const navigateFromCalendarToTracker = (programId: string, dayTab: string) => {
+    setSelectedProgramId(programId);
+    setSelectedDayTab(dayTab);
+    setCurrentView('tracker');
+  };
 
   const currentProgram = programs.find(p => p.id === selectedProgramId);
   const routeNeedsMissingProgram = (currentView === 'programDays' || currentView === 'tracker') && !currentProgram;
@@ -360,6 +366,15 @@ export default function App() {
         />
       )}
 
+      {currentView === 'workoutCalendar' && !routeNeedsMissingProgram && (
+        <WorkoutCalendar
+          programs={programs}
+          workoutHistory={workoutHistory}
+          onNavigate={setCurrentView}
+          onOpenWorkout={navigateFromCalendarToTracker}
+        />
+      )}
+
       {(currentView === 'programList' || routeNeedsMissingProgram) && (
         <ProgramList 
           programs={programs} 
@@ -390,6 +405,7 @@ export default function App() {
           onUpdateWorkoutHistory={handleUpdateWorkoutHistory}
           initialTab={selectedDayTab}
           onActiveTabChange={setSelectedDayTab}
+          onOpenCalendar={() => setCurrentView('workoutCalendar')}
           onBack={() => setCurrentView('programDays')}
         />
       )}

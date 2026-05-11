@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Dumbbell, Cloud, Utensils, Sparkles, Loader2, Trophy, User, Settings, CheckCircle2, AlertTriangle, BarChart3, Download, Upload } from 'lucide-react';
+import { Dumbbell, Cloud, Utensils, Sparkles, Loader2, Trophy, User, CalendarDays, CheckCircle2, AlertTriangle, BarChart3, Download, Upload } from 'lucide-react';
 import { getMealSuggestion } from '../services/geminiService';
 import { ViewState } from '../types';
 
@@ -97,11 +97,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, user, isLoading, onEx
           <span className="font-bold text-lg text-slate-400 group-hover:text-white">Review Semanal</span>
         </button>
 
-        <button className="bg-slate-800/50 border border-slate-700/50 p-6 rounded-2xl flex flex-col items-center gap-3 opacity-50 cursor-not-allowed">
-          <div className="bg-slate-700/50 p-3 rounded-full">
-            <Settings className="w-8 h-8 text-slate-500" />
+        <button
+          onClick={() => onNavigate('workoutCalendar')}
+          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/50 p-6 rounded-2xl flex flex-col items-center gap-3 transition-all group"
+        >
+          <div className="bg-slate-700/50 p-3 rounded-full group-hover:bg-emerald-500/20 transition-colors">
+            <CalendarDays className="w-8 h-8 text-slate-500 group-hover:text-emerald-500" />
           </div>
-          <span className="font-bold text-lg text-slate-500">Config</span>
+          <span className="font-bold text-lg text-slate-400 group-hover:text-white">Calendario</span>
         </button>
       </div>
 
