@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, Clock, Dumbbell, ExternalLink, TrendingUp } from 'lucide-react';
+import { ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, Clock, Dumbbell, ExternalLink, Trash2, TrendingUp } from 'lucide-react';
 import { Program, ViewState, WorkoutHistory, WorkoutSession } from '../types';
 
 interface WorkoutCalendarProps {
@@ -7,6 +7,7 @@ interface WorkoutCalendarProps {
   workoutHistory: WorkoutHistory;
   onNavigate: (view: ViewState) => void;
   onOpenWorkout: (programId: string, dayTab: string) => void;
+  onDeleteSession: (programId: string, dayTab: string, sessionId: string) => void;
 }
 
 type CalendarSession = WorkoutSession & {
@@ -73,7 +74,7 @@ const estimateVolume = (session: WorkoutSession): number => (
   }, 0)
 );
 
-const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHistory, onNavigate, onOpenWorkout }) => {
+const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHistory, onNavigate, onOpenWorkout, onDeleteSession }) => {
   const programColorMap = useMemo(() => {
     const colorMap: Record<string, string> = {};
     programs.forEach((program, index) => {
@@ -127,6 +128,13 @@ const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHist
 
   const changeMonth = (offset: number) => {
     setVisibleMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
+  };
+
+  const handleDeleteSession = (session: WorkoutSession) => {
+    const shouldDelete = window.confirm('Excluir este treino salvo do calendario? Essa acao nao altera o treino editavel.');
+    if (!shouldDelete) return;
+
+    onDeleteSession(session.programId, session.dayTab, session.id);
   };
 
   return (
@@ -255,13 +263,22 @@ const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHist
                         </div>
                         <p className="text-xs text-slate-500 mt-1">{session.programName}</p>
                       </div>
-                      <button
-                        onClick={() => onOpenWorkout(session.programId, session.dayTab)}
-                        className="p-2 rounded-lg bg-slate-800 text-slate-300 border border-slate-700"
-                        aria-label="Abrir treino"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => onOpenWorkout(session.programId, session.dayTab)}
+                          className="p-2 rounded-lg bg-slate-800 text-slate-300 border border-slate-700"
+                          aria-label="Abrir treino"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSession(session)}
+                          className="p-2 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20"
+                          aria-label="Excluir treino salvo"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 mb-3">

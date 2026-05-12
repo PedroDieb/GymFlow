@@ -13,6 +13,7 @@ interface WorkoutTrackerProps {
   initialTab: string | null;
   onActiveTabChange: (tab: string) => void;
   onOpenCalendar: () => void;
+  onDeleteSession: (programId: string, dayTab: string, sessionId: string) => void;
   onBack: () => void;
 }
 
@@ -30,7 +31,7 @@ const formatSessionDate = (isoDate: string): string => {
   });
 };
 
-const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, workoutHistory, onUpdateWorkoutHistory, initialTab, onActiveTabChange, onOpenCalendar, onBack }) => {
+const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, workoutHistory, onUpdateWorkoutHistory, initialTab, onActiveTabChange, onOpenCalendar, onDeleteSession, onBack }) => {
   const workouts = program.workouts;
   const setWorkouts = (callback: (prev: any) => any) => {
     const updatedWorkouts = callback(workouts);
@@ -317,6 +318,15 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
       onUpdateNotes({ ...workoutNotes, [`${program.id}_${activeTab}`]: val });
   };
 
+  const handleDeleteLatestSession = () => {
+    if (!latestSession) return;
+
+    const shouldDelete = window.confirm('Excluir o ultimo treino salvo deste dia? Ele sai do calendario e do resumo.');
+    if (!shouldDelete) return;
+
+    onDeleteSession(latestSession.programId, latestSession.dayTab, latestSession.id);
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-40 animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="bg-slate-800 p-4 shadow-lg border-b border-slate-700 sticky top-0 z-10">
@@ -458,9 +468,17 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
               <CalendarDays className="w-4 h-4 text-emerald-500" />
               Ultimo treino
             </h3>
-            <button onClick={onOpenCalendar} className="text-xs bg-slate-900 border border-slate-700 text-emerald-300 px-3 py-1.5 rounded-lg font-bold">
-              Calendario
-            </button>
+            <div className="flex gap-2">
+              {latestSession && (
+                <button onClick={handleDeleteLatestSession} className="text-xs bg-red-500/10 border border-red-500/20 text-red-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1">
+                  <Trash2 className="w-3 h-3" />
+                  Excluir
+                </button>
+              )}
+              <button onClick={onOpenCalendar} className="text-xs bg-slate-900 border border-slate-700 text-emerald-300 px-3 py-1.5 rounded-lg font-bold">
+                Calendario
+              </button>
+            </div>
           </div>
 
           {latestSession ? (

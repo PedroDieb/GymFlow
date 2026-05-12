@@ -270,6 +270,29 @@ export default function App() {
     } catch(e) { console.error("Error saving workout history", e); }
   };
 
+  const handleDeleteWorkoutSession = async (programId: string, dayTab: string, sessionId: string) => {
+    const programHistory = workoutHistory[programId];
+    if (!programHistory) return;
+
+    const updatedDayHistory = (programHistory[dayTab] || []).filter(session => session.id !== sessionId);
+    const updatedProgramHistory = { ...programHistory };
+
+    if (updatedDayHistory.length > 0) {
+      updatedProgramHistory[dayTab] = updatedDayHistory;
+    } else {
+      delete updatedProgramHistory[dayTab];
+    }
+
+    const updatedHistory = { ...workoutHistory };
+    if (Object.keys(updatedProgramHistory).length > 0) {
+      updatedHistory[programId] = updatedProgramHistory;
+    } else {
+      delete updatedHistory[programId];
+    }
+
+    await handleUpdateWorkoutHistory(updatedHistory);
+  };
+
   const handleExportBackup = () => {
     const backup: GymFlowBackup = {
       version: 1,
@@ -372,6 +395,7 @@ export default function App() {
           workoutHistory={workoutHistory}
           onNavigate={setCurrentView}
           onOpenWorkout={navigateFromCalendarToTracker}
+          onDeleteSession={handleDeleteWorkoutSession}
         />
       )}
 
@@ -406,6 +430,7 @@ export default function App() {
           initialTab={selectedDayTab}
           onActiveTabChange={setSelectedDayTab}
           onOpenCalendar={() => setCurrentView('workoutCalendar')}
+          onDeleteSession={handleDeleteWorkoutSession}
           onBack={() => setCurrentView('programDays')}
         />
       )}
