@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { signInAnonymously, signInWithCustomToken, onAuthStateChanged, User } from 'firebase/auth';
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithCustomToken, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
 // Services & Components
@@ -58,6 +58,33 @@ const writeLocalData = <T,>(key: string, value: T) => {
   }
 };
 
+const hasObjectData = (value: Record<string, unknown> | null | undefined): boolean => (
+  !!value && Object.keys(value).length > 0
+);
+
+const hasProfileData = (profile: UserProfile): boolean => (
+  Object.values(profile).some(value => String(value || '').trim().length > 0)
+);
+
+const getAuthErrorMessage = (error: any): string => {
+  switch (error?.code) {
+    case 'auth/email-already-in-use':
+      return 'Esse e-mail já tem conta. Use Entrar.';
+    case 'auth/invalid-email':
+      return 'E-mail inválido.';
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'E-mail ou senha incorretos.';
+    case 'auth/weak-password':
+      return 'A senha precisa ter pelo menos 6 caracteres.';
+    case 'auth/network-request-failed':
+      return 'Falha de conexão. Tente de novo.';
+    default:
+      return 'Não consegui autenticar agora.';
+  }
+};
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [programs, setPrograms] = useState<Program[]>(() => readLocalData<Program[]>(LOCAL_PROGRAMS_KEY, []));
@@ -67,6 +94,8 @@ export default function App() {
       displayName: '', weight: '', height: '', age: '', goal: ''
   }));
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
+  const [authActionLoading, setAuthActionLoading] = useState(false);
   
   // Navigation State
   const [currentView, setCurrentView] = useState<ViewState>(() => (
@@ -101,49 +130,25 @@ export default function App() {
 
   // 1. Authentication
   useEffect(() => {
-    const initAuth = async () => {
-      // Guard: Do not attempt auth if config is missing or auth service is null
-      if (!isFirebaseInitialized() || !auth) {
-        console.log("Offline Mode: Firebase not configured.");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (e: any) {
-        // Detect specific API Key errors and handle gracefully
-        if (e?.code === 'auth/invalid-api-key') {
-          console.warn("Invalid API Key detected. Falling back to Offline Mode.");
-        } else {
-          console.error("Auth Error:", e);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initAuth();
-    
-    // Subscribe to Auth State
-    if (isFirebaseInitialized() && auth) {
-      try {
-        const unsubscribe = onAuthStateChanged(auth, (u) => {
-          setUser(u);
-          setIsLoading(false); 
-        });
-        return () => unsubscribe();
-      } catch (e) {
-        console.warn("AuthState listener failed:", e);
-        setIsLoading(false);
-      }
-    } else {
+    if (!isFirebaseInitialized() || !auth) {
+      console.log("Offline Mode: Firebase not configured.");
       setIsLoading(false);
+      return;
     }
+
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setIsLoading(false);
+    });
+
+    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+      signInWithCustomToken(auth, __initial_auth_token).catch((e) => {
+        console.error("Auth Error:", e);
+        setIsLoading(false);
+      });
+    }
+
+    return () => unsubscribe();
   }, []);
 
   // 2. Data Sync
@@ -154,24 +159,49 @@ export default function App() {
     try {
       // Listen to Programs
       const progQuery = collection(db, 'artifacts', appId, 'users', user.uid, 'programs');
-      const unsubPrograms = onSnapshot(progQuery, (snapshot) => {
+      const unsubPrograms = onSnapshot(progQuery, async (snapshot) => {
         const loadedProgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Program));
+        if (snapshot.empty) {
+          const localPrograms = readLocalData<Program[]>(LOCAL_PROGRAMS_KEY, []);
+          if (localPrograms.length > 0) {
+            setPrograms(localPrograms);
+            await Promise.all(localPrograms.map(program => setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'programs', program.id), program)));
+            return;
+          }
+        }
         setPrograms(loadedProgs);
+        writeLocalData(LOCAL_PROGRAMS_KEY, loadedProgs);
       }, (error) => console.error("Error fetching programs:", error));
 
       // Listen to Notes
       const notesDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'notes', 'general_notes');
-      const unsubNotes = onSnapshot(notesDoc, (docSnap) => {
+      const unsubNotes = onSnapshot(notesDoc, async (docSnap) => {
           if (docSnap.exists()) {
-              setWorkoutNotes(docSnap.data() as WorkoutNotes);
+              const loadedNotes = docSnap.data() as WorkoutNotes;
+              setWorkoutNotes(loadedNotes);
+              writeLocalData(LOCAL_NOTES_KEY, loadedNotes);
+          } else {
+              const localNotes = readLocalData<WorkoutNotes>(LOCAL_NOTES_KEY, {});
+              if (hasObjectData(localNotes)) {
+                  await setDoc(notesDoc, localNotes, { merge: true });
+              }
           }
       });
 
       // Listen to Profile
       const profileDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'main');
-      const unsubProfile = onSnapshot(profileDoc, (docSnap) => {
+      const unsubProfile = onSnapshot(profileDoc, async (docSnap) => {
           if (docSnap.exists()) {
-              setUserProfile(docSnap.data() as UserProfile);
+              const loadedProfile = docSnap.data() as UserProfile;
+              setUserProfile(loadedProfile);
+              writeLocalData(LOCAL_PROFILE_KEY, loadedProfile);
+          } else {
+              const localProfile = readLocalData<UserProfile>(LOCAL_PROFILE_KEY, {
+                displayName: '', weight: '', height: '', age: '', goal: ''
+              });
+              if (hasProfileData(localProfile)) {
+                  await setDoc(profileDoc, localProfile, { merge: true });
+              }
           }
       });
 
@@ -182,6 +212,11 @@ export default function App() {
               const loadedHistory = docSnap.data() as WorkoutHistory;
               setWorkoutHistory(loadedHistory);
               writeLocalData(LOCAL_HISTORY_KEY, loadedHistory);
+          } else {
+              const localHistory = readLocalData<WorkoutHistory>(LOCAL_HISTORY_KEY, {});
+              if (hasObjectData(localHistory)) {
+                  setDoc(historyDoc, localHistory, { merge: true });
+              }
           }
       });
 
@@ -195,6 +230,33 @@ export default function App() {
       console.error("Firestore sync error:", e);
     }
   }, [user]);
+
+  const handleEmailAuth = async (email: string, password: string, mode: 'signin' | 'signup') => {
+    if (!auth || !isFirebaseInitialized()) {
+      setAuthError('Firebase ainda não está configurado neste deploy.');
+      return;
+    }
+
+    setAuthActionLoading(true);
+    setAuthError('');
+    try {
+      if (mode === 'signup') {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    } catch (e) {
+      setAuthError(getAuthErrorMessage(e));
+    } finally {
+      setAuthActionLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (!auth) return;
+    setAuthError('');
+    await signOut(auth);
+  };
 
   // --- Database Handlers ---
 
@@ -367,6 +429,11 @@ export default function App() {
           onNavigate={setCurrentView}
           user={user}
           isLoading={isLoading}
+          isCloudReady={isFirebaseInitialized()}
+          authError={authError}
+          authActionLoading={authActionLoading}
+          onEmailAuth={handleEmailAuth}
+          onSignOut={handleSignOut}
           onExportBackup={handleExportBackup}
           onImportBackup={handleImportBackup}
         />

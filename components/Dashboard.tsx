@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Dumbbell, Cloud, Utensils, Sparkles, Loader2, Trophy, User, CalendarDays, CheckCircle2, AlertTriangle, BarChart3, Download, Upload } from 'lucide-react';
+import { Dumbbell, Cloud, Utensils, Sparkles, Loader2, Trophy, User, CalendarDays, CheckCircle2, AlertTriangle, BarChart3, Download, Upload, LogIn, LogOut, Mail, Lock } from 'lucide-react';
 import { getMealSuggestion } from '../services/geminiService';
 import { ViewState } from '../types';
 
@@ -7,13 +7,31 @@ interface DashboardProps {
   onNavigate: (view: ViewState) => void;
   user: any;
   isLoading: boolean;
+  isCloudReady: boolean;
+  authError: string;
+  authActionLoading: boolean;
+  onEmailAuth: (email: string, password: string, mode: 'signin' | 'signup') => Promise<void>;
+  onSignOut: () => Promise<void>;
   onExportBackup: () => void;
   onImportBackup: (file: File) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onNavigate, user, isLoading, onExportBackup, onImportBackup }) => {
+const Dashboard: React.FC<DashboardProps> = ({
+  onNavigate,
+  user,
+  isLoading,
+  isCloudReady,
+  authError,
+  authActionLoading,
+  onEmailAuth,
+  onSignOut,
+  onExportBackup,
+  onImportBackup,
+}) => {
   const [dailyTip, setDailyTip] = useState('');
   const [tipLoading, setTipLoading] = useState(false);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
   const backupInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleGetMeal = async () => {
@@ -21,6 +39,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, user, isLoading, onEx
     const tip = await getMealSuggestion();
     setDailyTip(tip);
     setTipLoading(false);
+  };
+
+  const handleAuth = (mode: 'signin' | 'signup') => {
+    if (!authEmail || !authPassword) return;
+    onEmailAuth(authEmail.trim(), authPassword, mode);
   };
 
   return (
@@ -35,13 +58,83 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, user, isLoading, onEx
         <h1 className="text-3xl font-bold text-white tracking-tight">GymFlow</h1>
         <p className="text-slate-400 mt-2">Histórico, carga e evolução por treino</p>
         
-        {isLoading && <p className="text-xs text-blue-400 mt-4 animate-pulse">Conectando ao servidor...</p>}
-        {!isLoading && !user && (
+        {isLoading && <p className="text-xs text-blue-400 mt-4 animate-pulse">Conectando ao banco...</p>}
+        {!isLoading && !isCloudReady && (
            <p className="text-xs text-orange-400 mt-4 flex items-center justify-center gap-1">
-             <AlertTriangle className="w-3 h-3" /> Modo Offline (Sincronização desativada)
+             <AlertTriangle className="w-3 h-3" /> Modo local: Firebase nao configurado
            </p>
         )}
       </div>
+
+      {isCloudReady && (
+        <div className="w-full max-w-md mb-6 bg-slate-800 border border-slate-700 rounded-2xl p-4">
+          {user ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Banco conectado
+                </p>
+                <p className="text-sm text-slate-300 truncate mt-1">{user.email || 'Conta Firebase ativa'}</p>
+              </div>
+              <button
+                onClick={onSignOut}
+                className="shrink-0 bg-slate-900 border border-slate-700 text-slate-300 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Sair
+              </button>
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs font-bold uppercase text-blue-400 mb-3 flex items-center gap-1">
+                <Cloud className="w-3 h-3" />
+                Entrar para salvar no banco
+              </p>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2">
+                  <Mail className="w-4 h-4 text-slate-500" />
+                  <input
+                    type="email"
+                    value={authEmail}
+                    onChange={(event) => setAuthEmail(event.target.value)}
+                    placeholder="email"
+                    className="bg-transparent outline-none text-sm text-white flex-1 min-w-0"
+                  />
+                </label>
+                <label className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2">
+                  <Lock className="w-4 h-4 text-slate-500" />
+                  <input
+                    type="password"
+                    value={authPassword}
+                    onChange={(event) => setAuthPassword(event.target.value)}
+                    placeholder="senha"
+                    className="bg-transparent outline-none text-sm text-white flex-1 min-w-0"
+                  />
+                </label>
+              </div>
+              {authError && <p className="text-xs text-red-300 mt-2">{authError}</p>}
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <button
+                  onClick={() => handleAuth('signin')}
+                  disabled={authActionLoading || !authEmail || !authPassword}
+                  className="bg-emerald-500 text-slate-950 rounded-xl py-2.5 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {authActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
+                  Entrar
+                </button>
+                <button
+                  onClick={() => handleAuth('signup')}
+                  disabled={authActionLoading || !authEmail || !authPassword}
+                  className="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl py-2.5 text-sm font-bold disabled:opacity-50"
+                >
+                  Criar conta
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Widget Nutrição IA */}
       <div className="w-full max-w-md mb-6 bg-slate-800/50 border border-orange-500/20 rounded-2xl p-4 flex items-start gap-3 relative overflow-hidden">
@@ -141,6 +234,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, user, isLoading, onEx
           <>
             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
             Sincronizado via Firebase
+          </>
+        ) : isCloudReady ? (
+          <>
+            <Cloud className="w-3 h-3 text-blue-500" />
+            Entre para sincronizar no banco
           </>
         ) : (
           <>
