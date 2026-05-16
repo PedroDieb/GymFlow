@@ -483,6 +483,7 @@ export default function App() {
           onUpdateProgram={handleUpdateProgram}
           onNavigate={setCurrentView}
           onSelectDay={navigateToTracker}
+          workoutHistory={workoutHistory}
         />
       )}
 
