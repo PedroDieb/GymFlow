@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Square, Play, Sparkles, Heart, Plus, Check, X, Edit2, Timer, ChevronDown, ChevronUp, Wind, Link as LinkIcon, Unlink, Trash2, Clock, Info, Pause, StopCircle, CheckCircle2, Circle, FileText, Loader2, Youtube, ExternalLink, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Square, Play, Sparkles, Heart, Plus, Check, X, Edit2, Timer, ChevronDown, ChevronUp, Wind, Link as LinkIcon, Unlink, Trash2, Clock, Info, Pause, StopCircle, CheckCircle2, Circle, FileText, Loader2, Youtube, ExternalLink, CalendarDays, Printer } from 'lucide-react';
 import { Program, WorkoutHistory, WorkoutNotes, Exercise, WorkoutSession } from '../types';
 import { generateWorkoutExercises, getExerciseTip } from '../services/geminiService';
 
@@ -337,6 +337,113 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
     onDeleteSession(latestSession.programId, latestSession.dayTab, latestSession.id);
   };
 
+  const buildWorkoutPrintText = (): string => {
+    const lines: string[] = [
+      'GYMFLOW - TREINO ATUAL',
+      `Programa: ${program.name}`,
+      `Treino: ${activeTab}`,
+      `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
+    ];
+
+    if (program.objectives) {
+      lines.push('', 'OBJETIVOS / REGRAS DO PROGRAMA', program.objectives);
+    }
+
+    if (latestSession) {
+      lines.push(
+        '',
+        'ULTIMA SESSAO SALVA',
+        `Data: ${formatSessionDate(latestSession.completedAt)}`,
+        `Duracao: ${formatWorkoutTime(latestSession.durationSeconds)}`,
+        `Exercicios marcados: ${latestCompletedCount}/${latestSession.exercises.length}`
+      );
+    }
+
+    lines.push('', 'EXERCICIOS');
+
+    getCurrentExercises().forEach((exercise, index) => {
+      const previousExercise = getPreviousExercise(exercise);
+      const currentReps = buildPerformedReps(exercise).map((rep, repIndex) => `S${repIndex + 1}: ${rep || '-'}`).join(' | ');
+
+      lines.push(
+        '',
+        `${index + 1}. ${exercise.name}`,
+        `Planejado: ${formatPreviousValue(exercise.sets)} x ${formatPreviousValue(exercise.reps)}`,
+        `Atual: carga ${formatPreviousValue(exercise.weight, 'kg')} | reps ${currentReps} | RIR ${formatPreviousValue(exercise.rir)} | tempo ${formatPreviousValue(exercise.cadence)} | descanso ${formatPreviousValue(exercise.restSeconds, 's')}`
+      );
+
+      if (exercise.notes) {
+        lines.push(`Anotacao atual: ${exercise.notes}`);
+      }
+
+      if (previousExercise) {
+        lines.push(
+          `Anterior: carga ${formatPreviousValue(previousExercise.weight, 'kg')} | reps ${formatPreviousReps(previousExercise.performedReps)} | RIR ${formatPreviousValue(previousExercise.rir)} | tempo ${formatPreviousValue(previousExercise.cadence)}`,
+        );
+        if (previousExercise.notes) {
+          lines.push(`Anotacao anterior: ${previousExercise.notes}`);
+        }
+      }
+    });
+
+    const generalNote = workoutNotes[`${program.id}_${activeTab}`] || '';
+    if (generalNote || latestSession?.generalNotes) {
+      lines.push('', 'ANOTACOES GERAIS');
+      if (generalNote) lines.push(`Atual: ${generalNote}`);
+      if (latestSession?.generalNotes) lines.push(`Anterior: ${latestSession.generalNotes}`);
+    }
+
+    return lines.join('\n');
+  };
+
+  const handlePrintCurrentWorkout = async () => {
+    const reportText = buildWorkoutPrintText();
+    const printWindow = window.open('', '_blank', 'width=820,height=900');
+
+    if (!printWindow) {
+      try {
+        await navigator.clipboard?.writeText(reportText);
+        alert('Nao consegui abrir a janela de impressao. Copiei o treino para a area de transferencia.');
+      } catch {
+        alert('Nao consegui abrir a janela de impressao.');
+      }
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>GymFlow - ${program.name} - ${activeTab}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #111827; margin: 32px; line-height: 1.45; }
+            h1 { font-size: 20px; margin: 0 0 16px; }
+            pre { white-space: pre-wrap; font-family: Arial, sans-serif; font-size: 13px; }
+            .actions { display: flex; gap: 8px; margin-bottom: 20px; }
+            button { border: 1px solid #d1d5db; background: #f9fafb; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+            @media print { .actions { display: none; } body { margin: 18mm; } }
+          </style>
+        </head>
+        <body>
+          <div class="actions">
+            <button onclick="window.print()">Imprimir</button>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('report').textContent)">Copiar texto</button>
+          </div>
+          <h1>GymFlow - Treino atual</h1>
+          <pre id="report"></pre>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    const reportElement = printWindow.document.getElementById('report');
+    if (reportElement) reportElement.textContent = reportText;
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-40 animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="bg-slate-800 p-4 shadow-lg border-b border-slate-700 sticky top-0 z-10">
@@ -351,6 +458,14 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
               ) : (
                 <button onClick={toggleWorkoutTimer} className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-600 px-3 py-1.5 rounded-full text-xs font-bold transition-all"><Play className="w-3 h-3" /> Iniciar</button>
               )}
+              <button
+                onClick={handlePrintCurrentWorkout}
+                className="p-2 bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-600 rounded-full transition-all"
+                title="Imprimir treino atual"
+                aria-label="Imprimir treino atual"
+              >
+                <Printer className="w-4 h-4" />
+              </button>
               <button onClick={() => setIsAiModalOpen(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg shadow-purple-500/20"><Sparkles className="w-3 h-3" /> IA</button>
           </div>
         </div>
