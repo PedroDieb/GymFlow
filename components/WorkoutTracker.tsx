@@ -31,6 +31,16 @@ const formatSessionDate = (isoDate: string): string => {
   });
 };
 
+const formatPreviousValue = (value?: string | number | null, suffix = ''): string => {
+  const text = String(value ?? '').trim();
+  return text ? `${text}${suffix}` : '-';
+};
+
+const formatPreviousReps = (reps?: string[]): string => {
+  const cleanReps = (reps || []).filter(Boolean);
+  return cleanReps.length ? cleanReps.join(' / ') : '-';
+};
+
 const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, workoutHistory, onUpdateWorkoutHistory, initialTab, onActiveTabChange, onOpenCalendar, onDeleteSession, onBack }) => {
   const workouts = program.workouts;
   const setWorkouts = (callback: (prev: any) => any) => {
@@ -385,6 +395,7 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
             const isExpanded = expandedExerciseId === ex.id;
             const setsArray = buildPerformedReps(ex);
             const previousExercise = getPreviousExercise(ex);
+            const previousReps = previousExercise?.performedReps || [];
             const isLinkedToNext = ex.linkedToNext;
             const isLinkedFromPrev = index > 0 && getCurrentExercises()[index - 1].linkedToNext;
             let containerClasses = "group border-x border-slate-700 bg-slate-800 transition-all duration-200 overflow-hidden relative ";
@@ -415,16 +426,18 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
                 {isExpanded && (
                   <div className={`px-4 pb-4 border-t border-slate-700/50 bg-slate-900/30 ${isLinkedFromPrev || isLinkedToNext ? 'pl-6' : ''}`}>
                     <div className="flex gap-2 py-3 overflow-x-auto scrollbar-hide"><button onClick={() => handleGetTip(ex.name, 'breathing')} className="flex items-center gap-1.5 bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-500/20 whitespace-nowrap"><Wind className="w-3 h-3" /> Respiração</button><button onClick={() => toggleSupersetLink(index)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${ex.linkedToNext ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>{ex.linkedToNext ? <Unlink className="w-3 h-3" /> : <LinkIcon className="w-3 h-3" />}{ex.linkedToNext ? 'Desagrupar' : 'Combinar Próximo'}</button><button onClick={() => removeExercise(ex.id)} className="flex items-center gap-1.5 bg-red-500/10 text-red-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-500/20 ml-auto whitespace-nowrap"><Trash2 className="w-3 h-3" /></button></div>
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Séries alvo</label>
-                        <input type="text" value={ex.sets} onChange={(e) => updateExerciseData(ex.id, 'sets', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Reps alvo</label>
-                        <input type="text" value={ex.reps} onChange={(e) => updateExerciseData(ex.id, 'reps', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" />
-                      </div>
-                    </div>
+	                    <div className="grid grid-cols-2 gap-2 mb-4">
+	                      <div>
+	                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Séries alvo</label>
+	                        <input type="text" value={ex.sets} onChange={(e) => updateExerciseData(ex.id, 'sets', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" />
+                          {previousExercise && <p className="mt-1 text-[10px] text-slate-600 text-center">ant. {previousExercise.sets || '-'}</p>}
+	                      </div>
+	                      <div>
+	                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Reps alvo</label>
+	                        <input type="text" value={ex.reps} onChange={(e) => updateExerciseData(ex.id, 'reps', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" />
+                          {previousExercise && <p className="mt-1 text-[10px] text-slate-600 text-center">ant. {previousExercise.reps || '-'}</p>}
+	                      </div>
+	                    </div>
                     <div className="mb-4">
                       <div className="flex items-center justify-between mb-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Reps Realizadas</label>
@@ -433,23 +446,30 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
                           <button onClick={() => addPerformedSet(ex)} className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 text-xs font-bold">+ série</button>
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">{setsArray.map((rep, idx) => (<div key={idx} className="flex flex-col items-center gap-1"><span className="text-[10px] text-slate-500">S{idx+1}</span><input type="number" placeholder="-" value={rep} onChange={(e) => updateExerciseData(ex.id, 'performedReps', e.target.value, idx)} className="w-12 h-10 bg-slate-800 border border-slate-600 rounded-lg text-center text-white focus:border-emerald-500 focus:outline-none"/></div>))}</div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 mb-3"><div><label className="block text-[10px] font-bold text-slate-500 uppercase">Carga</label><input type="number" value={ex.weight || ''} onChange={(e) => updateExerciseData(ex.id, 'weight', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" /></div><div><div className="flex items-center justify-center gap-1 mb-1"><label className="block text-[10px] font-bold text-slate-500 uppercase">RIR</label><Info className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setRirModalOpen(true)} /></div><input type="text" placeholder="-" value={ex.rir || ''} onChange={(e) => updateExerciseData(ex.id, 'rir', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-orange-500 focus:outline-none" /></div><div><div className="flex items-center justify-center gap-1 mb-1"><label className="block text-[10px] font-bold text-slate-500 uppercase">Tempo</label><Clock className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setTempoModalOpen(true)} /></div><input type="text" placeholder="3010" value={ex.cadence || ''} onChange={(e) => updateExerciseData(ex.id, 'cadence', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" /></div><div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex justify-center items-center gap-1"><Timer className="w-3 h-3"/> Descanso</label><div className="relative"><input type="number" value={ex.restSeconds} onChange={(e) => updateExerciseData(ex.id, 'restSeconds', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" /><span className="absolute right-1 top-2 text-[10px] text-slate-500">s</span></div></div></div>
-                    <textarea placeholder="Anotações..." value={ex.notes || ''} onChange={(e) => updateExerciseData(ex.id, 'notes', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-white focus:border-purple-500 focus:outline-none h-16 resize-none"/>
-                    {previousExercise && (
-                      <div className="mt-3 bg-slate-800/70 border border-slate-700 rounded-lg p-3">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase mb-2">
-                          <CalendarDays className="w-3 h-3 text-emerald-400" />
-                          Sessão anterior
+	                      <div className="flex flex-wrap gap-2">{setsArray.map((rep, idx) => (<div key={idx} className="flex flex-col items-center gap-1"><span className="text-[10px] text-slate-500">S{idx+1}</span><input type="number" placeholder="-" value={rep} onChange={(e) => updateExerciseData(ex.id, 'performedReps', e.target.value, idx)} className="w-12 h-10 bg-slate-800 border border-slate-600 rounded-lg text-center text-white focus:border-emerald-500 focus:outline-none"/>{previousExercise && <span className="text-[10px] text-slate-600 leading-none">ant. {previousReps[idx] || '-'}</span>}</div>))}</div>
+	                    </div>
+	                    <div className="grid grid-cols-4 gap-2 mb-3"><div><label className="block text-[10px] font-bold text-slate-500 uppercase">Carga</label><input type="number" value={ex.weight || ''} onChange={(e) => updateExerciseData(ex.id, 'weight', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" />{previousExercise && <p className="mt-1 text-[10px] text-slate-600 text-center">ant. {formatPreviousValue(previousExercise.weight, 'kg')}</p>}</div><div><div className="flex items-center justify-center gap-1 mb-1"><label className="block text-[10px] font-bold text-slate-500 uppercase">RIR</label><Info className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setRirModalOpen(true)} /></div><input type="text" placeholder="-" value={ex.rir || ''} onChange={(e) => updateExerciseData(ex.id, 'rir', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-orange-500 focus:outline-none" />{previousExercise && <p className="mt-1 text-[10px] text-slate-600 text-center">ant. {formatPreviousValue(previousExercise.rir)}</p>}</div><div><div className="flex items-center justify-center gap-1 mb-1"><label className="block text-[10px] font-bold text-slate-500 uppercase">Tempo</label><Clock className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setTempoModalOpen(true)} /></div><input type="text" placeholder="3010" value={ex.cadence || ''} onChange={(e) => updateExerciseData(ex.id, 'cadence', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" />{previousExercise && <p className="mt-1 text-[10px] text-slate-600 text-center">ant. {formatPreviousValue(previousExercise.cadence)}</p>}</div><div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex justify-center items-center gap-1"><Timer className="w-3 h-3"/> Descanso</label><div className="relative"><input type="number" value={ex.restSeconds} onChange={(e) => updateExerciseData(ex.id, 'restSeconds', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" /><span className="absolute right-1 top-2 text-[10px] text-slate-500">s</span></div></div></div>
+	                    <textarea placeholder="Anotações..." value={ex.notes || ''} onChange={(e) => updateExerciseData(ex.id, 'notes', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-white focus:border-purple-500 focus:outline-none h-16 resize-none"/>
+                      {previousExercise?.notes && (
+                        <div className="mt-2 rounded-lg border border-slate-700/70 bg-slate-900/50 p-2">
+                          <p className="text-[10px] font-bold uppercase text-slate-600 mb-1">Anotação anterior</p>
+                          <p className="text-xs text-slate-500 italic">{previousExercise.notes}</p>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
-                          <div><span className="text-slate-500">Carga</span><div className="font-bold text-white">{previousExercise.weight || '-'} kg</div></div>
-                          <div><span className="text-slate-500">Reps</span><div className="font-bold text-white">{previousExercise.performedReps.filter(Boolean).join(' / ') || '-'}</div></div>
-                        </div>
-                        {previousExercise.notes && <p className="text-xs text-slate-400 mt-2 italic">{previousExercise.notes}</p>}
-                      </div>
-                    )}
+                      )}
+	                    {previousExercise && (
+	                      <div className="mt-3 bg-slate-800/70 border border-slate-700 rounded-lg p-3">
+	                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase mb-2">
+	                          <CalendarDays className="w-3 h-3 text-emerald-400" />
+	                          Sessão anterior
+	                        </div>
+	                        <div className="grid grid-cols-4 gap-2 text-xs text-slate-400">
+	                          <div><span className="text-slate-600">Carga</span><div className="font-bold text-slate-300">{formatPreviousValue(previousExercise.weight, 'kg')}</div></div>
+	                          <div><span className="text-slate-600">Reps</span><div className="font-bold text-slate-300">{formatPreviousReps(previousExercise.performedReps)}</div></div>
+	                          <div><span className="text-slate-600">RIR</span><div className="font-bold text-slate-300">{formatPreviousValue(previousExercise.rir)}</div></div>
+	                          <div><span className="text-slate-600">Tempo</span><div className="font-bold text-slate-300">{formatPreviousValue(previousExercise.cadence)}</div></div>
+	                        </div>
+	                      </div>
+	                    )}
                   </div>
                 )}
                 {isLinkedToNext && <div className="absolute bottom-[-10px] left-1/2 -translate-x-1/2 z-20 bg-slate-800 border border-slate-600 rounded-full p-1 shadow-lg"><LinkIcon className="w-3 h-3 text-emerald-500" /></div>}
@@ -459,7 +479,19 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
         </div>
 
         <div className="mt-8 mb-4">
-           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4"><label className="flex items-center gap-2 text-sm font-bold text-slate-400 mb-2"><FileText className="w-4 h-4 text-emerald-500" /> Anotações Gerais - {activeTab}</label><textarea placeholder="Como você se sentiu hoje?" value={workoutNotes[`${program.id}_${activeTab}`] || ''} onChange={(e) => handleNotesChange(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-emerald-500 h-24 resize-none"/></div>
+           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+             <label className="flex items-center gap-2 text-sm font-bold text-slate-400 mb-2">
+               <FileText className="w-4 h-4 text-emerald-500" />
+               Anotações Gerais - {activeTab}
+             </label>
+             <textarea placeholder="Como você se sentiu hoje?" value={workoutNotes[`${program.id}_${activeTab}`] || ''} onChange={(e) => handleNotesChange(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-emerald-500 h-24 resize-none"/>
+             {latestSession?.generalNotes && (
+               <div className="mt-2 rounded-lg border border-slate-700/70 bg-slate-900/50 p-3">
+                 <p className="text-[10px] font-bold uppercase text-slate-600 mb-1">Anotação geral anterior</p>
+                 <p className="text-xs text-slate-500 italic">{latestSession.generalNotes}</p>
+               </div>
+             )}
+           </div>
         </div>
 
         <div className="mb-4 bg-slate-800/50 border border-slate-700 rounded-xl p-4">
