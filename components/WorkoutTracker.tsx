@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Square, Play, Sparkles, Heart, Plus, Check, X, Edit2, Timer, ChevronDown, ChevronUp, Wind, Link as LinkIcon, Unlink, Trash2, Clock, Info, Pause, StopCircle, CheckCircle2, Circle, FileText, Loader2, Youtube, ExternalLink, CalendarDays } from 'lucide-react';
 import { Program, WorkoutHistory, WorkoutNotes, Exercise, WorkoutSession } from '../types';
 import { generateWorkoutExercises, getExerciseTip } from '../services/geminiService';
+import { findPreviousExerciseSnapshot } from '../utils/workoutHistory';
+import { getWorkoutDayKeys } from '../utils/workoutOrder';
 
 interface WorkoutTrackerProps {
   program: Program;
@@ -43,19 +45,20 @@ const formatPreviousReps = (reps?: string[]): string => {
 
 const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, workoutHistory, onUpdateWorkoutHistory, initialTab, onActiveTabChange, onOpenCalendar, onDeleteSession, onBack }) => {
   const workouts = program.workouts;
+  const workoutDayKeys = getWorkoutDayKeys(workouts);
   const setWorkouts = (callback: (prev: any) => any) => {
     const updatedWorkouts = callback(workouts);
     onUpdateProgram({ ...program, workouts: updatedWorkouts });
   };
 
-  const [activeTab, setActiveTab] = useState(initialTab || Object.keys(workouts)[0]);
+  const [activeTab, setActiveTab] = useState(initialTab || workoutDayKeys[0]);
   useEffect(() => {
     onActiveTabChange(activeTab);
   }, [activeTab, onActiveTabChange]);
 
   useEffect(() => { 
       if (!workouts[activeTab]) { 
-          const keys = Object.keys(workouts); 
+          const keys = getWorkoutDayKeys(workouts); 
           if (keys.length > 0) setActiveTab(keys[0]); 
       } 
   }, [workouts, activeTab]);
@@ -115,14 +118,9 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
   const getCurrentExercises = () => workouts[activeTab] || [];
   const getDayHistory = (): WorkoutSession[] => workoutHistory[program.id]?.[activeTab] || [];
   const getLatestSession = (): WorkoutSession | null => getDayHistory()[0] || null;
-  const getPreviousExercise = (exercise: Exercise) => {
-    const latestSession = getLatestSession();
-    if (!latestSession) return null;
-
-    return latestSession.exercises.find(snapshot => snapshot.exerciseId === exercise.id)
-      || latestSession.exercises.find(snapshot => snapshot.name === exercise.name)
-      || null;
-  };
+  const getPreviousExercise = (exercise: Exercise) => (
+    findPreviousExerciseSnapshot(workoutHistory, program.id, activeTab, exercise)
+  );
 
   const buildPerformedReps = (exercise: Exercise): string[] => {
     const plannedSetCount = getSetCount(exercise.sets);
@@ -361,7 +359,7 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
         {/* Navigation Tabs - Fix for layout breaking on long names */}
         <div className="flex items-center gap-2 mb-6 w-full">
           <div className="flex-1 overflow-x-auto pb-2 scrollbar-hide flex gap-2 min-w-0 mask-gradient-right">
-            {Object.keys(workouts).map(tab => (
+            {workoutDayKeys.map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-none min-w-[60px] px-4 py-3 rounded-xl font-medium transition-all duration-200 text-sm whitespace-nowrap flex items-center gap-2 ${activeTab === tab ? isCardioOrFlex(tab) ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-slate-900' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>{isCardioOrFlex(tab) && <Heart className="w-3 h-3" />}{tab}</button>
             ))}
           </div>

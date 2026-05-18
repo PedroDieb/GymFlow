@@ -1,6 +1,8 @@
 import React from 'react';
 import { ArrowLeft, Target, ChevronDown, Plus, Printer } from 'lucide-react';
 import { Exercise, Program, ViewState, WorkoutHistory } from '../types';
+import { findPreviousExerciseSnapshot } from '../utils/workoutHistory';
+import { getWorkoutDayKeys } from '../utils/workoutOrder';
 
 interface ProgramDaysManagerProps {
   program: Program;
@@ -32,6 +34,7 @@ const formatReportDate = (isoDate: string): string => (
 
 const ProgramDaysManager: React.FC<ProgramDaysManagerProps> = ({ program, onUpdateProgram, onNavigate, onSelectDay, workoutHistory }) => {
   const workouts = program.workouts || {};
+  const workoutDayKeys = getWorkoutDayKeys(workouts);
 
   const handleCreateDay = () => {
     const keys = Object.keys(workouts);
@@ -45,14 +48,9 @@ const ProgramDaysManager: React.FC<ProgramDaysManagerProps> = ({ program, onUpda
 
   const getExerciseCount = (key: string) => workouts[key]?.length || 0;
   const getLatestSession = (dayKey: string) => workoutHistory[program.id]?.[dayKey]?.[0] || null;
-  const getPreviousExercise = (dayKey: string, exercise: Exercise) => {
-    const latestSession = getLatestSession(dayKey);
-    if (!latestSession) return null;
-
-    return latestSession.exercises.find(snapshot => snapshot.exerciseId === exercise.id)
-      || latestSession.exercises.find(snapshot => snapshot.name === exercise.name)
-      || null;
-  };
+  const getPreviousExercise = (dayKey: string, exercise: Exercise) => (
+    findPreviousExerciseSnapshot(workoutHistory, program.id, dayKey, exercise)
+  );
 
   const buildProgramPrintText = (): string => {
     const lines: string[] = [
@@ -68,7 +66,7 @@ const ProgramDaysManager: React.FC<ProgramDaysManagerProps> = ({ program, onUpda
       lines.push('', 'OBJETIVOS / REGRAS', program.objectives);
     }
 
-    Object.keys(workouts).forEach((dayKey, dayIndex) => {
+    workoutDayKeys.forEach((dayKey, dayIndex) => {
       const exercises = workouts[dayKey] || [];
       const latestSession = getLatestSession(dayKey);
 
@@ -199,7 +197,7 @@ const ProgramDaysManager: React.FC<ProgramDaysManagerProps> = ({ program, onUpda
         {!program.objectives && <div className="h-px bg-slate-800 w-full mb-6"></div>}
 
         <div className="grid gap-4">
-          {Object.keys(workouts).map((key) => (
+          {workoutDayKeys.map((key) => (
             <div key={key} onClick={() => onSelectDay(key)} className="bg-slate-800 border border-slate-700 p-5 rounded-2xl flex items-center justify-between cursor-pointer hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 transition-all group">
               <div className="flex items-center gap-4">
                 <div className="bg-slate-700 h-12 w-12 rounded-xl flex items-center justify-center font-bold text-xl text-emerald-500 group-hover:bg-emerald-500 group-hover:text-slate-900 transition-colors">{key.charAt(0).toUpperCase()}</div>
