@@ -4,6 +4,7 @@ import { Program, WorkoutHistory, WorkoutNotes, Exercise, WorkoutSession } from 
 import { generateWorkoutExercises, getExerciseTip } from '../services/geminiService';
 import { findPreviousExerciseSnapshot } from '../utils/workoutHistory';
 import { getWorkoutDayKeys } from '../utils/workoutOrder';
+import { getNextLoadSuggestion } from '../utils/loadSuggestion';
 
 interface WorkoutTrackerProps {
   program: Program;
@@ -395,6 +396,7 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
             const setsArray = buildPerformedReps(ex);
             const previousExercise = getPreviousExercise(ex);
             const previousReps = previousExercise?.performedReps || [];
+            const nextLoadSuggestion = getNextLoadSuggestion(ex.weight);
             const isLinkedToNext = ex.linkedToNext;
             const isLinkedFromPrev = index > 0 && getCurrentExercises()[index - 1].linkedToNext;
             let containerClasses = "group border-x border-slate-700 bg-slate-800 transition-all duration-200 overflow-hidden relative ";
@@ -447,7 +449,45 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
                       </div>
 	                      <div className="flex flex-wrap gap-2">{setsArray.map((rep, idx) => (<div key={idx} className="flex flex-col items-center gap-1"><span className="text-[10px] text-slate-500">S{idx+1}</span><input type="number" placeholder="-" value={rep} onChange={(e) => updateExerciseData(ex.id, 'performedReps', e.target.value, idx)} className="w-12 h-10 bg-slate-800 border border-slate-600 rounded-lg text-center text-white focus:border-emerald-500 focus:outline-none"/>{previousExercise && <span className="text-[10px] text-slate-600 leading-none">ant. {previousReps[idx] || '-'}</span>}</div>))}</div>
 	                    </div>
-	                    <div className="grid grid-cols-4 gap-2 mb-3"><div><label className="block text-[10px] font-bold text-slate-500 uppercase">Carga</label><input type="number" value={ex.weight || ''} onChange={(e) => updateExerciseData(ex.id, 'weight', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" />{previousExercise && <p className="mt-1 text-[10px] text-slate-600 text-center">ant. {formatPreviousValue(previousExercise.weight, 'kg')}</p>}</div><div><div className="flex items-center justify-center gap-1 mb-1"><label className="block text-[10px] font-bold text-slate-500 uppercase">RIR</label><Info className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setRirModalOpen(true)} /></div><input type="text" placeholder="-" value={ex.rir || ''} onChange={(e) => updateExerciseData(ex.id, 'rir', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-orange-500 focus:outline-none" />{previousExercise && <p className="mt-1 text-[10px] text-slate-600 text-center">ant. {formatPreviousValue(previousExercise.rir)}</p>}</div><div><div className="flex items-center justify-center gap-1 mb-1"><label className="block text-[10px] font-bold text-slate-500 uppercase">Tempo</label><Clock className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setTempoModalOpen(true)} /></div><input type="text" placeholder="3010" value={ex.cadence || ''} onChange={(e) => updateExerciseData(ex.id, 'cadence', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" />{previousExercise && <p className="mt-1 text-[10px] text-slate-600 text-center">ant. {formatPreviousValue(previousExercise.cadence)}</p>}</div><div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex justify-center items-center gap-1"><Timer className="w-3 h-3"/> Descanso</label><div className="relative"><input type="number" value={ex.restSeconds} onChange={(e) => updateExerciseData(ex.id, 'restSeconds', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" /><span className="absolute right-1 top-2 text-[10px] text-slate-500">s</span></div></div></div>
+	                    <div className="grid grid-cols-4 gap-2 mb-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase">Carga</label>
+                          <input type="number" value={ex.weight || ''} onChange={(e) => updateExerciseData(ex.id, 'weight', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-emerald-500 focus:outline-none" />
+                          {previousExercise && <p className="mt-1 text-[10px] text-slate-600 text-center">ant. {formatPreviousValue(previousExercise.weight, 'kg')}</p>}
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-center gap-1 mb-1">
+                            <label className="block text-[10px] font-bold text-slate-500 uppercase">RIR</label>
+                            <Info className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setRirModalOpen(true)} />
+                          </div>
+                          <input type="text" placeholder="-" value={ex.rir || ''} onChange={(e) => updateExerciseData(ex.id, 'rir', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-orange-500 focus:outline-none" />
+                          {previousExercise && <p className="mt-1 text-[10px] text-slate-600 text-center">ant. {formatPreviousValue(previousExercise.rir)}</p>}
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-center gap-1 mb-1">
+                            <label className="block text-[10px] font-bold text-slate-500 uppercase">Tempo</label>
+                            <Clock className="w-3 h-3 text-slate-600 cursor-pointer" onClick={() => setTempoModalOpen(true)} />
+                          </div>
+                          <input type="text" placeholder="3010" value={ex.cadence || ''} onChange={(e) => updateExerciseData(ex.id, 'cadence', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" />
+                          {previousExercise && <p className="mt-1 text-[10px] text-slate-600 text-center">ant. {formatPreviousValue(previousExercise.cadence)}</p>}
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex justify-center items-center gap-1"><Timer className="w-3 h-3"/> Descanso</label>
+                          <div className="relative">
+                            <input type="number" value={ex.restSeconds} onChange={(e) => updateExerciseData(ex.id, 'restSeconds', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-center text-white focus:border-blue-500 focus:outline-none" />
+                            <span className="absolute right-1 top-2 text-[10px] text-slate-500">s</span>
+                          </div>
+                        </div>
+                      </div>
+                      {nextLoadSuggestion && (
+                        <div className="mb-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase text-emerald-300">Próx. carga sugerida</p>
+                            <p className="text-[10px] text-emerald-200/70">+2,5% a +5% da carga atual</p>
+                          </div>
+                          <span className="text-sm font-black text-emerald-200 whitespace-nowrap">{nextLoadSuggestion.label}</span>
+                        </div>
+                      )}
 	                    <textarea placeholder="Anotações..." value={ex.notes || ''} onChange={(e) => updateExerciseData(ex.id, 'notes', e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-white focus:border-purple-500 focus:outline-none h-16 resize-none"/>
                       {previousExercise?.notes && (
                         <div className="mt-2 rounded-lg border border-slate-700/70 bg-slate-900/50 p-2">

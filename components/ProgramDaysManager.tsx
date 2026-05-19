@@ -3,6 +3,7 @@ import { ArrowLeft, Target, ChevronDown, Plus, Printer } from 'lucide-react';
 import { Exercise, Program, ViewState, WorkoutHistory } from '../types';
 import { findPreviousExerciseSnapshot } from '../utils/workoutHistory';
 import { getWorkoutDayKeys } from '../utils/workoutOrder';
+import { getNextLoadSuggestion } from '../utils/loadSuggestion';
 
 interface ProgramDaysManagerProps {
   program: Program;
@@ -88,12 +89,17 @@ const ProgramDaysManager: React.FC<ProgramDaysManagerProps> = ({ program, onUpda
 
       exercises.forEach((exercise, exerciseIndex) => {
         const previousExercise = getPreviousExercise(dayKey, exercise);
+        const nextLoadSuggestion = getNextLoadSuggestion(exercise.weight);
         lines.push(
           '',
           `${exerciseIndex + 1}. ${exercise.name}`,
           `Alvo: ${formatReportValue(exercise.sets)} x ${formatReportValue(exercise.reps)}`,
           `Atual/base: carga ${formatReportValue(exercise.weight, 'kg')} | RIR ${formatReportValue(exercise.rir)} | tempo ${formatReportValue(exercise.cadence)} | descanso ${formatReportValue(exercise.restSeconds, 's')}`,
         );
+
+        if (nextLoadSuggestion) {
+          lines.push(`Proxima carga sugerida (+2,5% a +5%): ${nextLoadSuggestion.label}`);
+        }
 
         if (exercise.notes) {
           lines.push(`Notas atuais: ${exercise.notes}`);
