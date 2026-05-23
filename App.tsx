@@ -484,6 +484,7 @@ export default function App() {
           onNavigate={setCurrentView}
           onSelectDay={navigateToTracker}
           workoutHistory={workoutHistory}
+          workoutNotes={workoutNotes}
         />
       )}
 
