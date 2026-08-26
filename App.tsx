@@ -148,13 +148,39 @@ export default function App() {
     }
   };
 
+  const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
+
   const handleClearActiveWorkout = () => {
     setActiveWorkout(null);
+    setResumingSessionId(null);
     writeLocalData<ActiveWorkout | null>(LOCAL_ACTIVE_WORKOUT_KEY, null);
     if (user && isFirebaseInitialized() && db) {
       // Tombstone (não deleteDoc) pra outros dispositivos saberem que foi descartado
       setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'state', 'active_workout'), { clearedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
     }
+  };
+
+  const handleResumeSession = (session: WorkoutSession) => {
+    const program = programs.find(p => p.id === session.programId);
+    if (!program) return;
+    const dayExercises = program.workouts[session.dayTab] || [];
+    const mergedExercises = dayExercises.map(exercise => {
+      const snapshot = session.exercises.find(saved => saved.exerciseId === exercise.id);
+      if (!snapshot) return exercise;
+      return {
+        ...exercise,
+        weight: snapshot.weight || exercise.weight,
+        performedReps: snapshot.performedReps,
+        completed: snapshot.completed,
+        notes: snapshot.notes,
+      };
+    });
+    handleUpdateProgram({ ...program, workouts: { ...program.workouts, [session.dayTab]: mergedExercises } });
+    setResumingSessionId(session.id);
+    handleSetActiveWorkout({ programId: session.programId, dayTab: session.dayTab, startedAt: new Date().toISOString() });
+    setSelectedProgramId(session.programId);
+    setSelectedDayTab(session.dayTab);
+    setCurrentView('tracker');
   };
 
   // 1. Authentication
@@ -572,6 +598,7 @@ export default function App() {
           onOpenWorkout={navigateFromCalendarToTracker}
           onDeleteSession={handleDeleteWorkoutSession}
           onUpdateSession={handleUpdateWorkoutSession}
+          onResumeSession={handleResumeSession}
         />
       )}
 
@@ -611,6 +638,8 @@ export default function App() {
           onDeleteSession={handleDeleteWorkoutSession}
           onSetActiveWorkout={handleSetActiveWorkout}
           onClearActiveWorkout={handleClearActiveWorkout}
+          onResumeSession={handleResumeSession}
+          resumeSessionId={resumingSessionId}
           onBack={() => setCurrentView('programDays')}
         />
       )}

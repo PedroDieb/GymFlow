@@ -19,6 +19,8 @@ interface WorkoutTrackerProps {
   onDeleteSession: (programId: string, dayTab: string, sessionId: string) => void;
   onSetActiveWorkout: (aw: ActiveWorkout) => void;
   onClearActiveWorkout: () => void;
+  onResumeSession: (session: WorkoutSession) => void;
+  resumeSessionId: string | null;
   onBack: () => void;
 }
 
@@ -54,7 +56,7 @@ const formatPreviousReps = (reps?: string[]): string => {
   return cleanReps.length ? cleanReps.join(' / ') : '-';
 };
 
-const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, workoutHistory, onUpdateWorkoutHistory, initialTab, onActiveTabChange, onOpenCalendar, onDeleteSession, onSetActiveWorkout, onClearActiveWorkout, onBack }) => {
+const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, workoutHistory, onUpdateWorkoutHistory, initialTab, onActiveTabChange, onOpenCalendar, onDeleteSession, onSetActiveWorkout, onClearActiveWorkout, onResumeSession, resumeSessionId, onBack }) => {
   const workouts = program.workouts;
   const workoutDayKeys = getWorkoutDayKeys(workouts);
   const setWorkouts = (callback: (prev: any) => any) => {
@@ -228,11 +230,12 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
 
     const programHistory = workoutHistory[program.id] || {};
     const dayHistory = programHistory[activeTab] || [];
+    const filteredDayHistory = resumeSessionId ? dayHistory.filter(saved => saved.id !== resumeSessionId) : dayHistory;
     onUpdateWorkoutHistory({
       ...workoutHistory,
       [program.id]: {
         ...programHistory,
-        [activeTab]: [session, ...dayHistory].slice(0, 100),
+        [activeTab]: [session, ...filteredDayHistory].slice(0, 100),
       },
     });
 
@@ -624,10 +627,16 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
             </h3>
             <div className="flex gap-2">
               {latestSession && (
-                <button onClick={handleDeleteLatestSession} className="text-xs bg-red-500/10 border border-red-500/20 text-red-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1">
-                  <Trash2 className="w-3 h-3" />
-                  Excluir
-                </button>
+                <>
+                  <button onClick={() => onResumeSession(latestSession)} className="text-xs bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1">
+                    <Play className="w-3 h-3 fill-current" />
+                    Retomar
+                  </button>
+                  <button onClick={handleDeleteLatestSession} className="text-xs bg-red-500/10 border border-red-500/20 text-red-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1">
+                    <Trash2 className="w-3 h-3" />
+                    Excluir
+                  </button>
+                </>
               )}
               <button onClick={onOpenCalendar} className="text-xs bg-slate-900 border border-slate-700 text-emerald-300 px-3 py-1.5 rounded-lg font-bold">
                 Calendario

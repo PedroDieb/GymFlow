@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, Clock, Dumbbell, ExternalLink, Pencil, Trash2, TrendingUp } from 'lucide-react';
+import { ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, Clock, Dumbbell, ExternalLink, Pencil, Play, Trash2, TrendingUp } from 'lucide-react';
 import { Program, ViewState, WorkoutHistory, WorkoutSession } from '../types';
 import SessionEditor from './SessionEditor';
 
@@ -10,6 +10,7 @@ interface WorkoutCalendarProps {
   onOpenWorkout: (programId: string, dayTab: string) => void;
   onDeleteSession: (programId: string, dayTab: string, sessionId: string) => void;
   onUpdateSession: (programId: string, dayTab: string, updatedSession: WorkoutSession) => void;
+  onResumeSession: (session: WorkoutSession) => void;
 }
 
 type CalendarSession = WorkoutSession & {
@@ -76,7 +77,7 @@ const estimateVolume = (session: WorkoutSession): number => (
   }, 0)
 );
 
-const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHistory, onNavigate, onOpenWorkout, onDeleteSession, onUpdateSession }) => {
+const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHistory, onNavigate, onOpenWorkout, onDeleteSession, onUpdateSession, onResumeSession }) => {
   const programColorMap = useMemo(() => {
     const colorMap: Record<string, string> = {};
     programs.forEach((program, index) => {
@@ -253,6 +254,7 @@ const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHist
               {selectedSessions.map(session => {
                 const volume = estimateVolume(session);
                 const completed = session.exercises.filter(ex => ex.completed).length;
+                const isPartial = completed < session.exercises.length;
 
                 return (
                   <div key={session.id} className="bg-slate-900 border border-slate-700 rounded-xl p-3">
@@ -306,6 +308,12 @@ const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHist
                       </div>
                     </div>
 
+                    <button
+                      onClick={() => onResumeSession(session)}
+                      className="w-full mb-3 bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 rounded-xl py-2 text-xs font-bold flex items-center justify-center gap-2 hover:bg-emerald-500/25 transition-colors"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" /> {isPartial ? 'Continuar de onde parei' : 'Repetir treino'}
+                    </button>
                     <div className="space-y-1.5">
                       {session.exercises.slice(0, 6).map(exercise => (
                         <div key={`${session.id}_${exercise.exerciseId}`} className="grid grid-cols-[1fr_auto_auto] gap-2 text-xs items-center">
