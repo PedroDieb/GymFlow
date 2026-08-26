@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gymflow-v2';
+const CACHE_NAME = 'gymflow-v3';
 const APP_SHELL = ['./', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (event) => {

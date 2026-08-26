@@ -25,6 +25,14 @@ const getSetCount = (sets: string): number => {
   return numbers.length ? Math.max(...numbers) : 3;
 };
 
+interface RestTimerState {
+  timeLeft: number;
+  isRunning: boolean;
+  initialTime: number;
+  activeExerciseId: string | null;
+  endAt: number | null;
+}
+
 const formatSessionDate = (isoDate: string): string => {
   return new Date(isoDate).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -85,9 +93,37 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
   });
   const [elapsedWorkoutTime, setElapsedWorkoutTime] = useState(0);
   const [stopWorkoutModal, setStopWorkoutModal] = useState(false);
-  const [timer, setTimer] = useState({ timeLeft: 0, isRunning: false, initialTime: 60, activeExerciseId: null as string | null });
+  const [timer, setTimer] = useState<RestTimerState>(() => {
+    // Retoma o cronômetro de descanso de onde parou (sobrevive a fechar o app)
+    try {
+      const saved = localStorage.getItem('gymflow_rest_timer');
+      if (!saved) return { timeLeft: 0, isRunning: false, initialTime: 60, activeExerciseId: null, endAt: null };
+      const parsed = JSON.parse(saved);
+      const initialTime = typeof parsed.initialTime === 'number' ? parsed.initialTime : 60;
+      const activeExerciseId = parsed.activeExerciseId ?? null;
+      if (parsed.isRunning && typeof parsed.endAt === 'number') {
+        const remaining = Math.max(0, Math.ceil((parsed.endAt - Date.now()) / 1000));
+        if (remaining > 0) return { timeLeft: remaining, isRunning: true, initialTime, activeExerciseId, endAt: parsed.endAt };
+      }
+      if (typeof parsed.timeLeft === 'number' && parsed.timeLeft > 0) {
+        return { timeLeft: Math.min(parsed.timeLeft, initialTime), isRunning: false, initialTime, activeExerciseId, endAt: null };
+      }
+      return { timeLeft: 0, isRunning: false, initialTime, activeExerciseId, endAt: null };
+    } catch {
+      return { timeLeft: 0, isRunning: false, initialTime: 60, activeExerciseId: null, endAt: null };
+    }
+  });
   // Use ReturnType<typeof setInterval> to avoid NodeJS namespace issues
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Persiste o cronômetro de descanso pra sobreviver a fechar o app
+  useEffect(() => {
+    if (timer.timeLeft > 0 || timer.isRunning) {
+      localStorage.setItem('gymflow_rest_timer', JSON.stringify(timer));
+    } else {
+      localStorage.removeItem('gymflow_rest_timer');
+    }
+  }, [timer]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -100,18 +136,53 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
 
   const toggleWorkoutTimer = () => { if (workoutStartTime) { setStopWorkoutModal(true); } else { const now = Date.now(); setWorkoutStartTime(now); localStorage.setItem('gymflow_workout_start', now.toString()); } };
 
+  // Cronômetro baseado em timestamp: continua contando mesmo com o app em background.
+  // (O setInterval puro congelava quando o celular suspendia o JS.)
   useEffect(() => {
-    if (timer.isRunning && timer.timeLeft > 0) {
-      timerIntervalRef.current = setInterval(() => { setTimer(prev => { if (prev.timeLeft <= 1) { if(timerIntervalRef.current) clearInterval(timerIntervalRef.current); return { ...prev, timeLeft: 0, isRunning: false }; } return { ...prev, timeLeft: prev.timeLeft - 1 }; }); }, 1000);
-    } else { if(timerIntervalRef.current) clearInterval(timerIntervalRef.current); }
-    return () => { if(timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
-  }, [timer.isRunning, timer.timeLeft]);
+    if (!timer.isRunning || timer.endAt === null) { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); return; }
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((timer.endAt! - Date.now()) / 1000));
+      setTimer(prev => {
+        if (!prev.isRunning || prev.endAt === null) return prev;
+        if (remaining <= 0) {
+          if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+          return { ...prev, timeLeft: 0, isRunning: false, endAt: null };
+        }
+        return { ...prev, timeLeft: remaining };
+      });
+    };
+    tick();
+    timerIntervalRef.current = setInterval(tick, 250);
+    return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
+  }, [timer.isRunning, timer.endAt]);
 
-  const startTimer = (d: number, id: string | null = null) => setTimer({ timeLeft: d, isRunning: true, initialTime: d, activeExerciseId: id });
-  const pauseTimer = () => setTimer(prev => ({ ...prev, isRunning: false }));
-  const resumeTimer = () => setTimer(prev => ({ ...prev, isRunning: true }));
-  const stopTimer = () => setTimer(prev => ({ ...prev, isRunning: false, timeLeft: 0, activeExerciseId: null }));
-  const addTime = (s: number) => setTimer(prev => ({ ...prev, timeLeft: prev.timeLeft + s }));
+  // Ao voltar pro app (troca de aba/desbloqueio), corrige o restante na hora
+  useEffect(() => {
+    const syncFromClock = () => {
+      setTimer(prev => {
+        if (!prev.isRunning || prev.endAt === null) return prev;
+        const remaining = Math.max(0, Math.ceil((prev.endAt - Date.now()) / 1000));
+        if (remaining <= 0) return { ...prev, timeLeft: 0, isRunning: false, endAt: null };
+        return { ...prev, timeLeft: remaining };
+      });
+    };
+    document.addEventListener('visibilitychange', syncFromClock);
+    window.addEventListener('focus', syncFromClock);
+    return () => { document.removeEventListener('visibilitychange', syncFromClock); window.removeEventListener('focus', syncFromClock); };
+  }, []);
+
+  const startTimer = (d: number, id: string | null = null) => setTimer({ timeLeft: d, isRunning: true, initialTime: d, activeExerciseId: id, endAt: Date.now() + d * 1000 });
+  const pauseTimer = () => setTimer(prev => {
+    const remaining = prev.endAt !== null ? Math.max(0, Math.ceil((prev.endAt - Date.now()) / 1000)) : prev.timeLeft;
+    return { ...prev, timeLeft: remaining, isRunning: false, endAt: null };
+  });
+  const resumeTimer = () => setTimer(prev => ({ ...prev, isRunning: true, endAt: Date.now() + prev.timeLeft * 1000 }));
+  const stopTimer = () => setTimer(prev => ({ ...prev, isRunning: false, timeLeft: 0, endAt: null, activeExerciseId: null }));
+  const addTime = (s: number) => setTimer(prev => {
+    const timeLeft = Math.max(0, prev.timeLeft + s);
+    const endAt = prev.isRunning && prev.endAt !== null ? prev.endAt + s * 1000 : null;
+    return { ...prev, timeLeft, endAt };
+  });
   const formatTime = (s: number) => { const m = Math.floor(s / 60); const sec = s % 60; return `${m}:${sec < 10 ? '0' : ''}${sec}`; };
   const formatWorkoutTime = (s: number) => { const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); const sec = s % 60; if(h>0) return `${h}:${m<10?'0':''}${m}:${sec<10?'0':''}${sec}`; return `${m<10?'0':''}${m}:${sec<10?'0':''}${sec}`; };
 
