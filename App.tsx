@@ -13,7 +13,7 @@ import WeeklyReview from './components/WeeklyReview';
 import WorkoutCalendar from './components/WorkoutCalendar';
 
 // Types
-import { ActiveWorkout, Program, WorkoutHistory, WorkoutNotes, ViewState, UserProfile } from './types';
+import { ActiveWorkout, Program, WorkoutHistory, WorkoutNotes, ViewState, UserProfile, WorkoutSession } from './types';
 
 const LOCAL_PROGRAMS_KEY = 'gymflow_programs';
 const LOCAL_NOTES_KEY = 'gymflow_notes';
@@ -426,6 +426,22 @@ export default function App() {
     await handleUpdateWorkoutHistory(updatedHistory);
   };
 
+  const handleUpdateWorkoutSession = async (programId: string, dayTab: string, updatedSession: WorkoutSession) => {
+    const programHistory = workoutHistory[programId];
+    if (!programHistory) return;
+    const dayHistory = programHistory[dayTab] || [];
+    if (!dayHistory.some(session => session.id === updatedSession.id)) return;
+
+    const updatedHistory: WorkoutHistory = {
+      ...workoutHistory,
+      [programId]: {
+        ...programHistory,
+        [dayTab]: dayHistory.map(session => session.id === updatedSession.id ? updatedSession : session),
+      },
+    };
+    await handleUpdateWorkoutHistory(updatedHistory);
+  };
+
   const handleExportBackup = () => {
     const backup: GymFlowBackup = {
       version: 1,
@@ -555,6 +571,7 @@ export default function App() {
           onNavigate={setCurrentView}
           onOpenWorkout={navigateFromCalendarToTracker}
           onDeleteSession={handleDeleteWorkoutSession}
+          onUpdateSession={handleUpdateWorkoutSession}
         />
       )}
 

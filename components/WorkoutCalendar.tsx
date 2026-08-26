@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, Clock, Dumbbell, ExternalLink, Trash2, TrendingUp } from 'lucide-react';
+import { ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, Clock, Dumbbell, ExternalLink, Pencil, Trash2, TrendingUp } from 'lucide-react';
 import { Program, ViewState, WorkoutHistory, WorkoutSession } from '../types';
+import SessionEditor from './SessionEditor';
 
 interface WorkoutCalendarProps {
   programs: Program[];
@@ -8,6 +9,7 @@ interface WorkoutCalendarProps {
   onNavigate: (view: ViewState) => void;
   onOpenWorkout: (programId: string, dayTab: string) => void;
   onDeleteSession: (programId: string, dayTab: string, sessionId: string) => void;
+  onUpdateSession: (programId: string, dayTab: string, updatedSession: WorkoutSession) => void;
 }
 
 type CalendarSession = WorkoutSession & {
@@ -74,7 +76,7 @@ const estimateVolume = (session: WorkoutSession): number => (
   }, 0)
 );
 
-const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHistory, onNavigate, onOpenWorkout, onDeleteSession }) => {
+const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHistory, onNavigate, onOpenWorkout, onDeleteSession, onUpdateSession }) => {
   const programColorMap = useMemo(() => {
     const colorMap: Record<string, string> = {};
     programs.forEach((program, index) => {
@@ -101,6 +103,7 @@ const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHist
   const [visibleMonth, setVisibleMonth] = useState(() => (
     latestSession ? parseDateKey(latestSession.dateKey) : new Date()
   ));
+  const [editingSession, setEditingSession] = useState<WorkoutSession | null>(null);
 
   const sessionsByDate = useMemo(() => (
     sessions.reduce<Record<string, CalendarSession[]>>((acc, session) => {
@@ -272,6 +275,13 @@ const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHist
                           <ExternalLink className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={() => setEditingSession(session)}
+                          className="p-2 rounded-lg bg-slate-800 text-emerald-300 border border-slate-700"
+                          aria-label="Editar treino salvo"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handleDeleteSession(session)}
                           className="p-2 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20"
                           aria-label="Excluir treino salvo"
@@ -316,6 +326,16 @@ const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHist
             </div>
           )}
         </div>
+        {editingSession && (
+          <SessionEditor
+            session={editingSession}
+            onSave={(updated) => {
+              onUpdateSession(editingSession.programId, editingSession.dayTab, updated);
+              setEditingSession(null);
+            }}
+            onClose={() => setEditingSession(null)}
+          />
+        )}
       </div>
     </div>
   );
