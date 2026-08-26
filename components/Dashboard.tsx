@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Dumbbell, Cloud, Utensils, Sparkles, Loader2, Trophy, User, CalendarDays, CheckCircle2, AlertTriangle, BarChart3, Download, Upload, LogIn, LogOut, Mail, Lock, Play, X } from 'lucide-react';
-import { getMealSuggestion } from '../services/geminiService';
+import { Dumbbell, Cloud, Loader2, Trophy, User, CalendarDays, CheckCircle2, AlertTriangle, BarChart3, Download, Upload, LogIn, LogOut, Mail, Lock, Play, X } from './GfIcons';
 import { ActiveWorkout, ViewState } from '../types';
 
 interface DashboardProps {
@@ -42,18 +41,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   onExportBackup,
   onImportBackup,
 }) => {
-  const [dailyTip, setDailyTip] = useState('');
-  const [tipLoading, setTipLoading] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const backupInputRef = useRef<HTMLInputElement | null>(null);
-
-  const handleGetMeal = async () => {
-    setTipLoading(true);
-    const tip = await getMealSuggestion();
-    setDailyTip(tip);
-    setTipLoading(false);
-  };
 
   const handleAuth = (mode: 'signin' | 'signup') => {
     if (!authEmail || !authPassword) return;
@@ -62,6 +52,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-6 flex flex-col items-center justify-center animate-in fade-in duration-500">
+      <div className="w-full max-w-md gf-meta flex justify-between items-center mb-4">
+        <span><span className="r">✳</span> GYMFLOW® · PEDRO DIEB</span>
+        <span className="gf-tag">ver 2.0 · opacity 100%</span>
+      </div>
       <div className="mb-10 text-center">
         <div className="bg-emerald-500 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20 relative group">
           <Dumbbell className="w-10 h-10 text-slate-900" />
@@ -69,8 +63,9 @@ const Dashboard: React.FC<DashboardProps> = ({
              <Cloud className="w-3 h-3 text-white" />
           </div>
         </div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">GymFlow</h1>
-        <p className="text-slate-400 mt-2">Histórico, carga e evolução por treino</p>
+        <h1 className="gf-display text-6xl mt-2">Gym<em>F</em>low</h1>
+        <p className="gf-meta mt-3">Histórico, carga e evolução por treino</p>
+        <div className="gf-quote mt-4">Sem firula. Sem desculpa.</div>
         
         {isLoading && <p className="text-xs text-blue-400 mt-4 animate-pulse">Conectando ao banco...</p>}
         {!isLoading && !isCloudReady && (
@@ -177,25 +172,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* Widget Nutrição IA */}
-      <div className="w-full max-w-md mb-6 bg-slate-800/50 border border-orange-500/20 rounded-2xl p-4 flex items-start gap-3 relative overflow-hidden">
-         <div className="bg-orange-500/10 p-2 rounded-full shrink-0">
-            <Utensils className="w-5 h-5 text-orange-400" />
-         </div>
-         <div className="flex-1 z-10">
-            <h3 className="text-xs font-bold text-orange-400 uppercase mb-1">Chef Pós-Treino</h3>
-            {tipLoading ? <Loader2 className="w-4 h-4 animate-spin text-slate-500"/> : (
-                <p className="text-sm text-slate-300 italic">"{dailyTip || 'Clique para ver uma sugestão de refeição.'}"</p>
-            )}
-            {!dailyTip && !tipLoading && (
-                <button onClick={handleGetMeal} className="mt-2 text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded hover:bg-orange-500/30 transition-colors">
-                    Gerar Sugestão
-                </button>
-            )}
-         </div>
-         <Sparkles className="absolute -bottom-4 -right-4 w-20 h-20 text-orange-500/5 rotate-12" />
-      </div>
-
       <div className="grid grid-cols-2 gap-4 w-full max-w-md">
         {/* Painel de Treino (Ativo) */}
         <button 
@@ -270,6 +246,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         />
       </div>
       
+      <div className="w-full max-w-md mt-6 gf-meta flex items-center gap-3">
+        <div className="gf-barcode"></div>
+        <span>serial no. 000 000 · pedro <span className="r">✳</span> 26.08.26</span>
+      </div>
+
       <div className="mt-8 text-xs text-slate-600 flex items-center gap-1">
         {user ? (
           <>

@@ -1,15 +1,196 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GymFlow</title>
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#060606" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+    <!-- ═══ GYMFLOW V2 · EDITORIAL BRUTALISM · design system ═══ -->
+    <style id="gymflow-editorial">
+      :root{
+        --gf-bg:#060606;
+        --gf-card:#0e0e0e;
+        --gf-hover:#161616;
+        --gf-line:#222222;
+        --gf-line-soft:#161616;
+        --gf-ink:#f2f2f2;
+        --gf-muted:#8a8a8a;
+        --gf-dim:#505050;
+        --gf-paper:#d8d4cd;
+        --gf-accent:#ff1f1f;
+        --gf-serif:'Instrument Serif',Georgia,serif;
+        --gf-mono:'IBM Plex Mono',ui-monospace,monospace;
+        --gf-sans:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;
+      }
+      body{font-family:var(--gf-sans);background:var(--gf-bg)}
+
+      /* ── paleta: substitui a escala slate ─────────────────────── */
+      .bg-slate-950{background-color:#030303!important}
+      .bg-slate-900{background-color:#060606!important}
+      .bg-slate-800{background-color:#0e0e0e!important}
+      .bg-slate-700{background-color:#161616!important}
+      .bg-slate-600{background-color:#1d1d1d!important}
+      .border-slate-900{border-color:#101010!important}
+      .border-slate-800{border-color:#191919!important}
+      .border-slate-700{border-color:#222222!important}
+      .border-slate-600{border-color:#2a2a2a!important}
+      .border-slate-500{border-color:#3a3a3a!important}
+      .text-slate-950{color:#060606!important}
+      .text-slate-900{color:#0a0a0a!important}
+      .text-slate-100{color:#f2f2f2!important}
+      .text-slate-200{color:#d8d4cd!important}
+      .text-slate-300{color:#c4c4c4!important}
+      .text-slate-400{color:#8a8a8a!important}
+      .text-slate-500{color:#6a6a6a!important}
+      .text-slate-600{color:#505050!important}
+      .text-slate-700{color:#3a3a3a!important}
+      .text-white{color:#f2f2f2!important}
+
+      /* ── ACENTO: emerald vira vermelho #ff1f1f ────────────────── */
+      .bg-emerald-500{background-color:#ff1f1f!important}
+      .bg-emerald-600{background-color:#d81515!important}
+      .bg-emerald-400{background-color:#ff4d4d!important}
+      .bg-emerald-500\/10{background-color:rgba(255,31,31,.10)!important}
+      .bg-emerald-500\/20{background-color:rgba(255,31,31,.18)!important}
+      .bg-emerald-500\/30{background-color:rgba(255,31,31,.28)!important}
+      .bg-emerald-500\/40{background-color:rgba(255,31,31,.35)!important}
+      .bg-emerald-500\/50{background-color:rgba(255,31,31,.45)!important}
+      .text-emerald-200{color:#ffb3b3!important}
+      .text-emerald-300{color:#ff8080!important}
+      .text-emerald-400{color:#ff5151!important}
+      .text-emerald-500{color:#ff1f1f!important}
+      .border-emerald-500{border-color:#ff1f1f!important}
+      .border-emerald-500\/40{border-color:rgba(255,31,31,.45)!important}
+      .border-emerald-500\/50{border-color:rgba(255,31,31,.55)!important}
+      .shadow-emerald-500\/20{box-shadow:0 0 0 0 transparent!important}
+      .from-emerald-500{--tw-gradient-from:#ff1f1f!important}
+      .to-emerald-500{--tw-gradient-to:#ff1f1f!important}
+
+      /* ── DESTRUTIVO: red/rose ─────────────────────────────────── */
+      .bg-red-400{background-color:#ff3b3b!important}
+      .bg-red-500{background-color:#ff1f1f!important}
+      .bg-red-600{background-color:#d81515!important}
+      .text-red-300{color:#ff9d9d!important}
+      .text-red-400{color:#ff5b5b!important}
+      .text-red-500{color:#ff1f1f!important}
+      .border-red-500{border-color:#ff1f1f!important}
+      .bg-rose-400{background-color:#ff3b3b!important}
+      .bg-rose-500{background-color:#ff1f1f!important}
+      .border-rose-500{border-color:#ff1f1f!important}
+      .text-rose-300{color:#ff9d9d!important}
+      .text-rose-500{color:#ff1f1f!important}
+
+      /* ── PAPEL: blue/purple/orange vira creme ─────────────────── */
+      .bg-blue-500{background-color:#d8d4cd!important;color:#060606!important}
+      .bg-blue-600{background-color:#c9c4bb!important;color:#060606!important}
+      .text-blue-100{color:#ece9e3!important}
+      .text-blue-200{color:#e6e2db!important}
+      .text-blue-300{color:#e0dcd4!important}
+      .text-blue-400{color:#d8d4cd!important}
+      .text-blue-500{color:#cfcac2!important}
+      .border-blue-500{border-color:#d8d4cd!important}
+      .bg-blue-500\/20{background-color:rgba(216,212,205,.20)!important}
+      .bg-purple-200{color:#e0dcd4!important}
+      .bg-purple-300{color:#d8d4cd!important}
+      .bg-purple-500{background-color:#d8d4cd!important;color:#060606!important}
+      .bg-purple-600{background-color:#c9c4bb!important;color:#060606!important}
+      .text-purple-200{color:#e6e2db!important}
+      .text-purple-300{color:#e0dcd4!important}
+      .text-purple-400{color:#d8d4cd!important}
+      .text-purple-500{color:#cfcac2!important}
+      .border-purple-500{border-color:#d8d4cd!important}
+      .shadow-purple-500{box-shadow:0 0 0 0 transparent!important}
+      .from-purple-500{--tw-gradient-from:#d8d4cd!important}
+      .bg-orange-400{background-color:#d8d4cd!important;color:#060606!important}
+      .bg-orange-500{background-color:#d8d4cd!important;color:#060606!important}
+      .text-orange-300{color:#e6e2db!important}
+      .text-orange-400{color:#d8d4cd!important}
+      .text-orange-500{color:#cfcac2!important}
+      .border-orange-500{border-color:#d8d4cd!important}
+      .bg-orange-500\/5{background-color:rgba(216,212,205,.05)!important}
+      .bg-orange-500\/10{background-color:rgba(216,212,205,.10)!important}
+      .bg-orange-500\/20{background-color:rgba(216,212,205,.16)!important}
+      .bg-orange-500\/30{background-color:rgba(216,212,205,.25)!important}
+      .border-orange-500\/20{border-color:rgba(216,212,205,.25)!important}
+      .text-yellow-400{color:#e6e2db!important}
+      .via-pink-500{--tw-gradient-via:#d8d4cd!important}
+
+      /* ── GEOMETRIA: cantos retos, sem sombra ──────────────────── */
+      .rounded-\[\.25rem\],.rounded,.rounded-sm,.rounded-md,.rounded-lg,
+      .rounded-xl,.rounded-2xl,.rounded-3xl,.rounded-full{border-radius:0!important}
+      .shadow,.shadow-sm,.shadow-md,.shadow-lg,.shadow-xl,.shadow-2xl{box-shadow:none!important}
+
+      /* ── FOCO / SELEÇÃO ───────────────────────────────────────── */
+      ::selection{background:#ff1f1f;color:#060606}
+      button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:1px solid #ff1f1f;outline-offset:2px}
+      *{scrollbar-width:thin;scrollbar-color:#2a2a2a #060606}
+      ::-webkit-scrollbar{width:8px;height:8px}
+      ::-webkit-scrollbar-thumb{background:#2a2a2a}
+      ::-webkit-scrollbar-track{background:#060606}
+
+      /* ── UTILIDADES GYMFLOW ───────────────────────────────────── */
+      .gf-display{
+        font-family:var(--gf-serif);font-weight:400;
+        text-transform:uppercase;letter-spacing:-.02em;line-height:.86;
+      }
+      .gf-display em{font-style:italic}
+      .gf-meta{
+        font-family:var(--gf-mono);font-size:10px;
+        letter-spacing:.16em;text-transform:uppercase;color:#8a8a8a;
+      }
+      .gf-meta .r{color:#ff1f1f}
+      .gf-tag{
+        font-family:var(--gf-mono);font-size:9px;letter-spacing:.14em;
+        text-transform:uppercase;color:#8a8a8a;
+        border:1px solid #222;padding:3px 6px;display:inline-block;
+      }
+      .gf-quote{
+        font-family:var(--gf-serif);font-style:italic;font-size:20px;
+        color:var(--gf-paper);
+      }
+      .gf-quote::before{content:"«";color:var(--gf-dim);margin-right:6px}
+      .gf-quote::after{content:"»";color:var(--gf-dim);margin-left:6px}
+      .gf-box{background:#0e0e0e;border:1px solid #222}
+      .gf-barcode{
+        height:22px;width:132px;flex:none;opacity:.85;
+        background:repeating-linear-gradient(90deg,
+          var(--gf-paper) 0 1px,transparent 1px 3px,
+          var(--gf-paper) 3px 5px,transparent 5px 7px,
+          var(--gf-paper) 7px 8px,transparent 8px 12px);
+      }
+      .gf-halftone{
+        background-image:
+          radial-gradient(circle at 30% 50%,#d9d5ce 0 1.2px,transparent 1.5px),
+          radial-gradient(circle at 30% 50%,#d9d5ce 0 1.2px,transparent 1.5px);
+        background-size:5px 5px,5px 5px;
+        background-position:0 0,2.5px 2.5px;
+      }
+      .btn-accent{
+        background:#ff1f1f!important;color:#060606!important;
+        border:1px solid #ff1f1f!important;font-weight:700!important;
+        letter-spacing:.12em;text-transform:uppercase;
+        transition:background .12s,color .12s;
+      }
+      .btn-accent:hover{background:#ff4d4d!important;color:#060606!important}
+      .btn-ink{
+        background:transparent!important;color:#f2f2f2!important;
+        border:1px solid #2a2a2a!important;font-weight:700!important;
+        letter-spacing:.12em;text-transform:uppercase;
+        transition:background .12s,color .12s;
+      }
+      .btn-ink:hover{background:#f2f2f2!important;color:#060606!important}
+
+      /* ── ÍCONES: afia lucide (caps retos, traço 1.5) ─────────── */
+      svg{stroke-linecap:square!important;stroke-linejoin:miter!important}
+      svg.lucide{stroke-width:1.5!important}
+    </style>
+
     <style>
       body { font-family: 'Inter', sans-serif; }
       .scrollbar-hide::-webkit-scrollbar { display: none; }
