@@ -9,8 +9,10 @@ interface DashboardProps {
   isLoading: boolean;
   isCloudReady: boolean;
   authError: string;
+  authInfo: string;
   authActionLoading: boolean;
   onEmailAuth: (email: string, password: string, mode: 'signin' | 'signup') => Promise<void>;
+  onPasswordReset: (email: string) => Promise<void>;
   onSignOut: () => Promise<void>;
   onExportBackup: () => void;
   onImportBackup: (file: File) => void;
@@ -22,8 +24,10 @@ const Dashboard: React.FC<DashboardProps> = ({
   isLoading,
   isCloudReady,
   authError,
+  authInfo,
   authActionLoading,
   onEmailAuth,
+  onPasswordReset,
   onSignOut,
   onExportBackup,
   onImportBackup,
@@ -113,6 +117,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   />
                 </label>
               </div>
+              {authInfo && <p className="text-xs text-emerald-300 mt-2">{authInfo}</p>}
               {authError && <p className="text-xs text-red-300 mt-2">{authError}</p>}
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <button
@@ -131,6 +136,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                   Criar conta
                 </button>
               </div>
+              <button
+                onClick={() => onPasswordReset(authEmail.trim())}
+                disabled={authActionLoading}
+                className="w-full mt-2 text-xs text-slate-400 hover:text-emerald-400 transition-colors py-1 disabled:opacity-50"
+              >
+                Esqueci minha senha
+              </button>
             </div>
           )}
         </div>

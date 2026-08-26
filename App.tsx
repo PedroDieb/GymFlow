@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithCustomToken, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
+import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithCustomToken, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
 // Services & Components
@@ -72,6 +72,8 @@ const getAuthErrorMessage = (error: any): string => {
       return 'Esse e-mail já tem conta. Use Entrar.';
     case 'auth/invalid-email':
       return 'E-mail inválido.';
+    case 'auth/missing-email':
+      return 'Digite seu e-mail primeiro.';
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
     case 'auth/user-not-found':
@@ -95,6 +97,7 @@ export default function App() {
   }));
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState('');
+  const [authInfo, setAuthInfo] = useState('');
   const [authActionLoading, setAuthActionLoading] = useState(false);
   
   // Navigation State
@@ -239,12 +242,32 @@ export default function App() {
 
     setAuthActionLoading(true);
     setAuthError('');
+    setAuthInfo('');
     try {
       if (mode === 'signup') {
         await createUserWithEmailAndPassword(auth, email, password);
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
+    } catch (e) {
+      setAuthError(getAuthErrorMessage(e));
+    } finally {
+      setAuthActionLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async (email: string) => {
+    if (!auth || !isFirebaseInitialized()) {
+      setAuthError('Firebase ainda não está configurado neste deploy.');
+      return;
+    }
+
+    setAuthActionLoading(true);
+    setAuthError('');
+    setAuthInfo('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setAuthInfo('E-mail de recuperação enviado! Confere a caixa de entrada (e o spam).');
     } catch (e) {
       setAuthError(getAuthErrorMessage(e));
     } finally {
@@ -431,8 +454,10 @@ export default function App() {
           isLoading={isLoading}
           isCloudReady={isFirebaseInitialized()}
           authError={authError}
+          authInfo={authInfo}
           authActionLoading={authActionLoading}
           onEmailAuth={handleEmailAuth}
+          onPasswordReset={handlePasswordReset}
           onSignOut={handleSignOut}
           onExportBackup={handleExportBackup}
           onImportBackup={handleImportBackup}
