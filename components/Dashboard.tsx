@@ -178,10 +178,11 @@ const Dashboard: React.FC<DashboardProps> = ({
           onClick={() => onNavigate('programList')}
           className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/50 p-6 rounded-2xl flex flex-col items-center gap-3 transition-all group shadow-lg relative overflow-hidden"
         >
+          <span className="gf-tag absolute top-2 left-2 z-10">01</span>
           <div className="bg-emerald-500/10 p-3 rounded-full group-hover:bg-emerald-500/20 transition-colors z-10">
             <Trophy className="w-8 h-8 text-emerald-500" />
           </div>
-          <span className="font-bold text-lg z-10">Meus Programas</span>
+          <span className="font-bold text-sm z-10 uppercase tracking-[0.18em]">Meus Programas</span>
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
 
@@ -190,10 +191,11 @@ const Dashboard: React.FC<DashboardProps> = ({
           onClick={() => onNavigate('profile')}
           className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-blue-500/50 p-6 rounded-2xl flex flex-col items-center gap-3 transition-all group"
         >
+          <span className="gf-tag absolute top-2 left-2 z-10">02</span>
           <div className="bg-slate-700/50 p-3 rounded-full group-hover:bg-blue-500/20 transition-colors">
             <User className="w-8 h-8 text-slate-500 group-hover:text-blue-500" />
           </div>
-          <span className="font-bold text-lg text-slate-400 group-hover:text-white">Perfil</span>
+          <span className="font-bold text-sm text-slate-400 group-hover:text-white uppercase tracking-[0.18em]">Perfil</span>
         </button>
 
         {/* Review Semanal (Novo) */}
@@ -201,34 +203,36 @@ const Dashboard: React.FC<DashboardProps> = ({
           onClick={() => onNavigate('weeklyReview')}
           className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-purple-500/50 p-6 rounded-2xl flex flex-col items-center gap-3 transition-all group"
         >
+          <span className="gf-tag absolute top-2 left-2 z-10">03</span>
           <div className="bg-slate-700/50 p-3 rounded-full group-hover:bg-purple-500/20 transition-colors">
             <BarChart3 className="w-8 h-8 text-slate-500 group-hover:text-purple-500" />
           </div>
-          <span className="font-bold text-lg text-slate-400 group-hover:text-white">Review Semanal</span>
+          <span className="font-bold text-sm text-slate-400 group-hover:text-white uppercase tracking-[0.18em]">Review Semanal</span>
         </button>
 
         <button
           onClick={() => onNavigate('workoutCalendar')}
           className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/50 p-6 rounded-2xl flex flex-col items-center gap-3 transition-all group"
         >
+          <span className="gf-tag absolute top-2 left-2 z-10">04</span>
           <div className="bg-slate-700/50 p-3 rounded-full group-hover:bg-emerald-500/20 transition-colors">
             <CalendarDays className="w-8 h-8 text-slate-500 group-hover:text-emerald-500" />
           </div>
-          <span className="font-bold text-lg text-slate-400 group-hover:text-white">Calendario</span>
+          <span className="font-bold text-sm text-slate-400 group-hover:text-white uppercase tracking-[0.18em]">Calendario</span>
         </button>
       </div>
 
       <div className="w-full max-w-md mt-4 grid grid-cols-2 gap-3">
         <button
           onClick={onExportBackup}
-          className="bg-slate-800 border border-slate-700 hover:border-emerald-500/50 rounded-xl p-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-300"
+          className="bg-slate-800 border border-slate-700 hover:border-emerald-500/50 rounded-xl p-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-300 uppercase tracking-wider"
         >
           <Download className="w-4 h-4 text-emerald-400" />
           Backup
         </button>
         <button
           onClick={() => backupInputRef.current?.click()}
-          className="bg-slate-800 border border-slate-700 hover:border-blue-500/50 rounded-xl p-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-300"
+          className="bg-slate-800 border border-slate-700 hover:border-blue-500/50 rounded-xl p-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-300 uppercase tracking-wider"
         >
           <Upload className="w-4 h-4 text-blue-400" />
           Restaurar

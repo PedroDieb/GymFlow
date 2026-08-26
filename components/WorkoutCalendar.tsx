@@ -149,8 +149,8 @@ const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHist
               <ArrowLeft className="w-6 h-6 text-slate-400" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-white">Calendario</h1>
-              <p className="text-xs text-slate-500">{sessions.length} sessoes salvas</p>
+              <h1 className="gf-display text-4xl">Calendario</h1>
+              <p className="gf-meta">{sessions.length} sessoes salvas</p>
             </div>
           </div>
           <CalendarDays className="w-6 h-6 text-emerald-400" />
@@ -162,7 +162,7 @@ const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHist
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="text-center">
-              <h2 className="font-bold text-white capitalize">{formatMonth(visibleMonth)}</h2>
+              <h2 className="gf-display text-3xl capitalize">{formatMonth(visibleMonth)}</h2>
               <button
                 onClick={() => {
                   const now = new Date();
@@ -239,7 +239,7 @@ const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ programs, workoutHist
 
         <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-slate-200 capitalize">{formatDate(selectedDate)}</h3>
+            <h3 className="gf-display text-2xl capitalize">{formatDate(selectedDate)}</h3>
             <BarChart3 className="w-4 h-4 text-emerald-400" />
           </div>
 

@@ -426,7 +426,7 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
         <div className="flex justify-between items-center max-w-md mx-auto">
           <div className="flex items-center gap-3">
             <button onClick={onBack} className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-400 transition-colors"><ArrowLeft className="w-6 h-6" /></button>
-            <div><h1 className="text-sm font-bold text-slate-400 uppercase leading-none">{program.name}</h1><h2 className="text-lg font-bold text-white leading-tight">Treino {activeTab}</h2></div>
+            <div><h1 className="gf-meta leading-none">{program.name}</h1><h2 className="gf-display text-3xl leading-tight">Treino {activeTab}</h2></div>
           </div>
           <div className="flex items-center gap-2">
               {workoutStartTime ? (

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Sparkles, Plus, Edit2, Trash2, Calendar, Target, Cloud, X, Loader2, ClipboardList } from 'lucide-react';
+import { Burst } from './GfIcons';
 import { Program, ViewState, Exercise } from '../types';
 import { generateFullProgramData } from '../services/geminiService';
 import { createPhaseOneProgram } from '../data/workoutTemplates';
@@ -148,12 +149,12 @@ const ProgramList: React.FC<ProgramListProps> = ({ programs, onCreateProgram, on
           <button onClick={() => onNavigate('dashboard')} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
             <ArrowLeft className="w-6 h-6 text-slate-400" />
           </button>
-          <h1 className="text-2xl font-bold text-white">Programas</h1>
+          <h1 className="gf-display text-4xl">Programas</h1>
         </div>
 
         <div className="space-y-4 mb-8">
           <div className="flex justify-between items-center gap-3">
-             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Ativos</h2>
+             <h2 className="flex items-center gap-2 text-sm font-bold text-slate-500 uppercase tracking-wider"><Burst className="w-4 h-4 text-slate-500" />Ativos</h2>
              <div className="flex gap-2">
                 <button
                   onClick={handleCreatePhaseOneProgram}
@@ -173,14 +174,14 @@ const ProgramList: React.FC<ProgramListProps> = ({ programs, onCreateProgram, on
           </div>
           
           {activePrograms.length === 0 && <p className="text-slate-600 text-sm italic">Nenhum programa ativo.</p>}
-          {activePrograms.map(prog => (
+          {activePrograms.map((prog, idx) => (
             <div 
               key={prog.id}
               onClick={() => onSelectProgram(prog.id)}
               className="bg-slate-800 border border-slate-700 p-5 rounded-2xl relative group cursor-pointer hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 transition-all"
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-xl text-white">{prog.name}</h3>
+                <h3 className="font-bold text-xl text-white flex items-baseline gap-3"><span className="gf-meta">{String(idx + 1).padStart(2, '0')}</span>{prog.name}</h3>
                 <div className="flex gap-1">
                     <button onClick={(e) => openObjectives(prog, e)} className={`p-2 rounded-lg transition-colors ${prog.objectives ? 'text-blue-400 hover:bg-blue-500/10' : 'text-slate-500 hover:text-blue-400 hover:bg-slate-700'}`}><Target className="w-4 h-4"/></button>
                     <button onClick={(e) => openEdit(prog, e)} className="p-2 text-slate-500 hover:text-emerald-400 hover:bg-slate-700 rounded-lg"><Edit2 className="w-4 h-4"/></button>
@@ -207,7 +208,7 @@ const ProgramList: React.FC<ProgramListProps> = ({ programs, onCreateProgram, on
 
         {finishedPrograms.length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Finalizados</h2>
+            <h2 className="flex items-center gap-2 text-sm font-bold text-slate-500 uppercase tracking-wider"><Burst className="w-4 h-4 text-slate-500" />Finalizados</h2>
             {finishedPrograms.map(prog => (
               <div key={prog.id} onClick={() => onSelectProgram(prog.id)} className="bg-slate-800/50 border border-slate-700/50 p-5 rounded-2xl opacity-75 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer">
                 <div className="flex justify-between items-start"><h3 className="font-bold text-lg text-slate-300">{prog.name}</h3><div className="flex gap-1"><button onClick={(e) => openEdit(prog, e)} className="p-2 text-slate-600 hover:text-white"><Edit2 className="w-4 h-4"/></button></div></div>

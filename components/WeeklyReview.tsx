@@ -62,7 +62,7 @@ const WeeklyReview: React.FC<WeeklyReviewProps> = ({ programs, notes, profile, o
           <button onClick={() => onNavigate('dashboard')} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
             <ArrowLeft className="w-6 h-6 text-slate-400" />
           </button>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="gf-display text-4xl flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-purple-500" /> Review IA
           </h1>
         </div>
@@ -70,7 +70,7 @@ const WeeklyReview: React.FC<WeeklyReviewProps> = ({ programs, notes, profile, o
         {/* Score Card */}
         <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 mb-6 shadow-xl relative overflow-hidden text-center">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-emerald-500"></div>
-          <h3 className="text-slate-400 text-sm uppercase font-bold tracking-wider mb-2">Consistência Semanal</h3>
+          <h3 className="gf-meta mb-2">Consistência Semanal</h3>
           <div className={`text-6xl font-black ${getScoreColor(data.consistencyScore)} mb-2`}>
             {data.consistencyScore}
           </div>
@@ -103,7 +103,7 @@ const WeeklyReview: React.FC<WeeklyReviewProps> = ({ programs, notes, profile, o
           {/* Motivation */}
           <div className="bg-gradient-to-br from-purple-500/10 to-slate-800 border border-purple-500/20 rounded-2xl p-6 text-center relative">
              <Zap className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-             <p className="text-white font-medium text-lg italic">"{data.motivationalQuote}"</p>
+             <p className="gf-quote mx-auto">{data.motivationalQuote}</p>
              <p className="text-purple-400 text-xs mt-2 font-bold uppercase">- Coach GymFlow</p>
           </div>
         </div>

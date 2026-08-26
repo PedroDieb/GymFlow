@@ -65,8 +65,8 @@ const SessionEditor: React.FC<SessionEditorProps> = ({ session, onSave, onClose 
               <X className="w-5 h-5 text-slate-400" />
             </button>
             <div>
-              <h2 className="text-base font-bold text-white">Editar treino</h2>
-              <p className="text-xs text-slate-500">{session.dayTab} · {session.programName} · {formatSessionDate(session.completedAt)}</p>
+              <h2 className="gf-display text-2xl">Editar treino</h2>
+              <p className="gf-meta">{session.dayTab} · {session.programName} · {formatSessionDate(session.completedAt)}</p>
             </div>
           </div>
         </div>
@@ -76,7 +76,7 @@ const SessionEditor: React.FC<SessionEditorProps> = ({ session, onSave, onClose 
           return (
             <div key={exercise.exerciseId || exerciseIndex} className="bg-slate-800 border border-slate-700 rounded-2xl p-4 mb-3">
               <div className="flex items-center justify-between gap-3 mb-3">
-                <h3 className="text-sm font-bold text-white flex-1">{exercise.name}</h3>
+                <h3 className="text-sm font-bold text-white flex-1"><span className="gf-meta mr-2">{String(exerciseIndex + 1).padStart(2, '0')}</span>{exercise.name}</h3>
                 <button
                   onClick={() => updateExercise(exerciseIndex, { completed: !exercise.completed })}
                   className={`p-1.5 rounded-full border transition-colors ${exercise.completed ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-slate-900 border-slate-600 text-slate-500'}`}

@@ -35,21 +35,21 @@ const Profile: React.FC<ProfileProps> = ({ profile, onUpdateProfile, onNavigate 
               <button onClick={() => onNavigate('dashboard')} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
                 <ArrowLeft className="w-6 h-6 text-slate-400" />
               </button>
-              <h1 className="text-2xl font-bold text-white">Perfil</h1>
+              <h1 className="gf-display text-4xl">Perfil</h1>
             </div>
 
             <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl mb-6 flex flex-col items-center animate-in fade-in duration-500">
                  <div className="bg-slate-700 p-4 rounded-full mb-4">
                     <User className="w-12 h-12 text-slate-400" />
                  </div>
-                 <h2 className="text-xl font-bold text-white">{formData.displayName || 'Atleta'}</h2>
-                 <p className="text-slate-400 text-sm">{formData.goal || 'Definir objetivo'}</p>
+                 <h2 className="gf-display text-3xl">{formData.displayName || 'Atleta'}</h2>
+                 <p className="gf-meta mt-1">{formData.goal || 'Definir objetivo'}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                  <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-4">
                     <div>
-                        <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-1">
+                        <label className="flex items-center gap-2 gf-meta mb-1">
                             <User className="w-4 h-4" /> Nome
                         </label>
                         <input
@@ -63,7 +63,7 @@ const Profile: React.FC<ProfileProps> = ({ profile, onUpdateProfile, onNavigate 
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                             <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-1">
+                             <label className="flex items-center gap-2 gf-meta mb-1">
                                 <Scale className="w-4 h-4" /> Peso (kg)
                             </label>
                             <input
@@ -75,7 +75,7 @@ const Profile: React.FC<ProfileProps> = ({ profile, onUpdateProfile, onNavigate 
                             />
                         </div>
                          <div>
-                             <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-1">
+                             <label className="flex items-center gap-2 gf-meta mb-1">
                                 <Ruler className="w-4 h-4" /> Altura (cm)
                             </label>
                             <input
@@ -90,7 +90,7 @@ const Profile: React.FC<ProfileProps> = ({ profile, onUpdateProfile, onNavigate 
 
                      <div className="grid grid-cols-2 gap-4">
                         <div>
-                             <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-1">
+                             <label className="flex items-center gap-2 gf-meta mb-1">
                                 <Calendar className="w-4 h-4" /> Idade
                             </label>
                             <input
@@ -104,7 +104,7 @@ const Profile: React.FC<ProfileProps> = ({ profile, onUpdateProfile, onNavigate 
                     </div>
 
                      <div>
-                        <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-1">
+                        <label className="flex items-center gap-2 gf-meta mb-1">
                             <Target className="w-4 h-4" /> Objetivo Principal
                         </label>
                         <input

@@ -263,8 +263,8 @@ const ProgramDaysManager: React.FC<ProgramDaysManagerProps> = ({ program, onUpda
               <ArrowLeft className="w-6 h-6 text-slate-400" />
             </button>
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-white leading-tight truncate">{program.name}</h1>
-              <p className="text-xs text-slate-400">Gerenciar divisão de treinos</p>
+              <h1 className="gf-display text-3xl leading-tight truncate">{program.name}</h1>
+              <p className="gf-meta">Gerenciar divisão de treinos</p>
             </div>
           </div>
           <button
