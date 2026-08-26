@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Square, Play, Sparkles, Heart, Plus, Check, X, Edit2, Timer, ChevronDown, ChevronUp, Wind, Link as LinkIcon, Unlink, Trash2, Clock, Info, Pause, StopCircle, CheckCircle2, Circle, FileText, Loader2, Youtube, ExternalLink, CalendarDays } from 'lucide-react';
-import { Program, WorkoutHistory, WorkoutNotes, Exercise, WorkoutSession } from '../types';
+import { ActiveWorkout, Program, WorkoutHistory, WorkoutNotes, Exercise, WorkoutSession } from '../types';
 import { generateWorkoutExercises, getExerciseTip } from '../services/geminiService';
 import { findPreviousExerciseSnapshot } from '../utils/workoutHistory';
 import { getWorkoutDayKeys } from '../utils/workoutOrder';
@@ -17,6 +17,8 @@ interface WorkoutTrackerProps {
   onActiveTabChange: (tab: string) => void;
   onOpenCalendar: () => void;
   onDeleteSession: (programId: string, dayTab: string, sessionId: string) => void;
+  onSetActiveWorkout: (aw: ActiveWorkout) => void;
+  onClearActiveWorkout: () => void;
   onBack: () => void;
 }
 
@@ -52,7 +54,7 @@ const formatPreviousReps = (reps?: string[]): string => {
   return cleanReps.length ? cleanReps.join(' / ') : '-';
 };
 
-const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, workoutHistory, onUpdateWorkoutHistory, initialTab, onActiveTabChange, onOpenCalendar, onDeleteSession, onBack }) => {
+const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgram, workoutNotes, onUpdateNotes, workoutHistory, onUpdateWorkoutHistory, initialTab, onActiveTabChange, onOpenCalendar, onDeleteSession, onSetActiveWorkout, onClearActiveWorkout, onBack }) => {
   const workouts = program.workouts;
   const workoutDayKeys = getWorkoutDayKeys(workouts);
   const setWorkouts = (callback: (prev: any) => any) => {
@@ -134,7 +136,7 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
     return () => clearInterval(interval);
   }, [workoutStartTime]);
 
-  const toggleWorkoutTimer = () => { if (workoutStartTime) { setStopWorkoutModal(true); } else { const now = Date.now(); setWorkoutStartTime(now); localStorage.setItem('gymflow_workout_start', now.toString()); } };
+  const toggleWorkoutTimer = () => { if (workoutStartTime) { setStopWorkoutModal(true); } else { const now = Date.now(); setWorkoutStartTime(now); localStorage.setItem('gymflow_workout_start', now.toString()); onSetActiveWorkout({ programId: program.id, dayTab: activeTab, startedAt: new Date().toISOString() }); } };
 
   // Cronômetro baseado em timestamp: continua contando mesmo com o app em background.
   // (O setInterval puro congelava quando o celular suspendia o JS.)
@@ -250,6 +252,7 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
     setElapsedWorkoutTime(0);
     localStorage.removeItem('gymflow_workout_start');
     setStopWorkoutModal(false);
+    onClearActiveWorkout();
   };
 
   const handleAddTab = () => {
@@ -383,6 +386,15 @@ const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ program, onUpdateProgra
     !!ex.notes
   )) || !!workoutNotes[`${program.id}_${activeTab}`];
   const latestSession = getLatestSession();
+
+  // Marca "treino em andamento" sempre que houver dados preenchidos no dia
+  // (checkmarks, reps, cargas ou notas) — permite retomar de outro dispositivo
+  useEffect(() => {
+    if (hasWorkoutData()) {
+      onSetActiveWorkout({ programId: program.id, dayTab: activeTab, startedAt: new Date().toISOString() });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workouts, activeTab]);
   const latestSessionVolume = latestSession?.exercises.reduce((total, exercise) => {
     const weight = parseFloat(String(exercise.weight || '').replace(',', '.'));
     if (!Number.isFinite(weight)) return total;

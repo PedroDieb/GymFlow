@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { Dumbbell, Cloud, Utensils, Sparkles, Loader2, Trophy, User, CalendarDays, CheckCircle2, AlertTriangle, BarChart3, Download, Upload, LogIn, LogOut, Mail, Lock } from 'lucide-react';
+import { Dumbbell, Cloud, Utensils, Sparkles, Loader2, Trophy, User, CalendarDays, CheckCircle2, AlertTriangle, BarChart3, Download, Upload, LogIn, LogOut, Mail, Lock, Play, X } from 'lucide-react';
 import { getMealSuggestion } from '../services/geminiService';
-import { ViewState } from '../types';
+import { ActiveWorkout, ViewState } from '../types';
 
 interface DashboardProps {
   onNavigate: (view: ViewState) => void;
@@ -13,6 +13,11 @@ interface DashboardProps {
   authActionLoading: boolean;
   onEmailAuth: (email: string, password: string, mode: 'signin' | 'signup') => Promise<void>;
   onPasswordReset: (email: string) => Promise<void>;
+  activeWorkout: ActiveWorkout | null;
+  activeWorkoutLabel: string;
+  activeWorkoutStartedLabel: string;
+  onResumeWorkout: () => void;
+  onDismissActiveWorkout: () => void;
   onSignOut: () => Promise<void>;
   onExportBackup: () => void;
   onImportBackup: (file: File) => void;
@@ -28,6 +33,11 @@ const Dashboard: React.FC<DashboardProps> = ({
   authActionLoading,
   onEmailAuth,
   onPasswordReset,
+  activeWorkout,
+  activeWorkoutLabel,
+  activeWorkoutStartedLabel,
+  onResumeWorkout,
+  onDismissActiveWorkout,
   onSignOut,
   onExportBackup,
   onImportBackup,
@@ -69,6 +79,25 @@ const Dashboard: React.FC<DashboardProps> = ({
            </p>
         )}
       </div>
+
+      {activeWorkout && activeWorkoutLabel && (
+        <div className="w-full max-w-md mb-3 bg-emerald-500/10 border border-emerald-500/40 rounded-2xl p-3 flex items-center gap-2">
+          <button onClick={onResumeWorkout} className="flex items-center gap-3 flex-1 min-w-0 text-left group">
+            <div className="bg-emerald-500/20 p-2.5 rounded-full shrink-0 group-hover:bg-emerald-500/30 transition-colors">
+              <Play className="w-5 h-5 text-emerald-400 fill-current" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold uppercase text-emerald-400">Treino em andamento</p>
+              <p className="text-sm font-bold text-white truncate">{activeWorkoutLabel}</p>
+              {activeWorkoutStartedLabel && <p className="text-xs text-slate-400 mt-0.5">{activeWorkoutStartedLabel}</p>}
+            </div>
+            <span className="text-xs font-bold text-emerald-300 shrink-0 group-hover:translate-x-0.5 transition-transform">Retomar →</span>
+          </button>
+          <button onClick={onDismissActiveWorkout} aria-label="Descartar treino em andamento" className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg shrink-0 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {isCloudReady && (
         <div className="w-full max-w-md mb-6 bg-slate-800 border border-slate-700 rounded-2xl p-4">

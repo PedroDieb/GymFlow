@@ -13,13 +13,14 @@ import WeeklyReview from './components/WeeklyReview';
 import WorkoutCalendar from './components/WorkoutCalendar';
 
 // Types
-import { Program, WorkoutHistory, WorkoutNotes, ViewState, UserProfile } from './types';
+import { ActiveWorkout, Program, WorkoutHistory, WorkoutNotes, ViewState, UserProfile } from './types';
 
 const LOCAL_PROGRAMS_KEY = 'gymflow_programs';
 const LOCAL_NOTES_KEY = 'gymflow_notes';
 const LOCAL_PROFILE_KEY = 'gymflow_profile';
 const LOCAL_HISTORY_KEY = 'gymflow_workout_history';
 const LOCAL_NAVIGATION_KEY = 'gymflow_navigation';
+const LOCAL_ACTIVE_WORKOUT_KEY = 'gymflow_active_workout';
 
 type NavigationState = {
   currentView: ViewState;
@@ -131,6 +132,31 @@ export default function App() {
     });
   }, [currentView, selectedProgramId, selectedDayTab]);
 
+  // Treino em andamento (retomada): { programId, dayTab, startedAt }
+  const [activeWorkout, setActiveWorkout] = useState<ActiveWorkout | null>(() => (
+    readLocalData<ActiveWorkout | null>(LOCAL_ACTIVE_WORKOUT_KEY, null)
+  ));
+
+  const handleSetActiveWorkout = (aw: ActiveWorkout) => {
+    const sameWorkout = activeWorkout && activeWorkout.programId === aw.programId && activeWorkout.dayTab === aw.dayTab;
+    if (sameWorkout) return; // já marcado — preserva o startedAt original
+    const updated: ActiveWorkout = { ...aw, startedAt: activeWorkout?.startedAt ?? aw.startedAt };
+    setActiveWorkout(updated);
+    writeLocalData<ActiveWorkout | null>(LOCAL_ACTIVE_WORKOUT_KEY, updated);
+    if (user && isFirebaseInitialized() && db) {
+      setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'state', 'active_workout'), updated, { merge: true }).catch(() => {});
+    }
+  };
+
+  const handleClearActiveWorkout = () => {
+    setActiveWorkout(null);
+    writeLocalData<ActiveWorkout | null>(LOCAL_ACTIVE_WORKOUT_KEY, null);
+    if (user && isFirebaseInitialized() && db) {
+      // Tombstone (não deleteDoc) pra outros dispositivos saberem que foi descartado
+      setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'state', 'active_workout'), { clearedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+    }
+  };
+
   // 1. Authentication
   useEffect(() => {
     if (!isFirebaseInitialized() || !auth) {
@@ -223,11 +249,33 @@ export default function App() {
           }
       });
 
+      // Listen to Active Workout (retomada entre dispositivos)
+      const activeWorkoutDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'state', 'active_workout');
+      const unsubActiveWorkout = onSnapshot(activeWorkoutDoc, (docSnap) => {
+          if (docSnap.exists()) {
+              const data = docSnap.data() as (ActiveWorkout & { clearedAt?: string });
+              if (!data.programId) {
+                  // Tombstone: outro dispositivo descartou o treino em andamento
+                  setActiveWorkout(null);
+                  writeLocalData<ActiveWorkout | null>(LOCAL_ACTIVE_WORKOUT_KEY, null);
+                  return;
+              }
+              const loaded: ActiveWorkout = { programId: data.programId, dayTab: data.dayTab, startedAt: data.startedAt };
+              setActiveWorkout(loaded);
+              writeLocalData<ActiveWorkout | null>(LOCAL_ACTIVE_WORKOUT_KEY, loaded);
+          } else {
+              // Nada no cloud: sobe o que tiver localmente (uso offline)
+              const localActive = readLocalData<ActiveWorkout | null>(LOCAL_ACTIVE_WORKOUT_KEY, null);
+              if (localActive) setDoc(activeWorkoutDoc, localActive).catch(() => {});
+          }
+      });
+
       return () => {
           unsubPrograms();
           unsubNotes();
           unsubProfile();
           unsubHistory();
+          unsubActiveWorkout();
       };
     } catch (e) {
       console.error("Firestore sync error:", e);
@@ -442,8 +490,22 @@ export default function App() {
     setCurrentView('tracker');
   };
 
+  const resumeActiveWorkout = () => {
+    if (!activeWorkout) return;
+    const program = programs.find(p => p.id === activeWorkout.programId);
+    if (!program) return; // programa não existe mais — ignora
+    setSelectedProgramId(activeWorkout.programId);
+    setSelectedDayTab(activeWorkout.dayTab);
+    setCurrentView('tracker');
+  };
+
   const currentProgram = programs.find(p => p.id === selectedProgramId);
   const routeNeedsMissingProgram = (currentView === 'programDays' || currentView === 'tracker') && !currentProgram;
+  const activeWorkoutProgram = activeWorkout ? programs.find(p => p.id === activeWorkout.programId) : null;
+  const activeWorkoutLabel = activeWorkoutProgram && activeWorkout ? `${activeWorkoutProgram.name} · ${activeWorkout.dayTab}` : '';
+  const activeWorkoutStartedLabel = activeWorkout?.startedAt
+    ? `começou ${new Date(activeWorkout.startedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às ${new Date(activeWorkout.startedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+    : '';
 
   return (
     <>
@@ -458,6 +520,11 @@ export default function App() {
           authActionLoading={authActionLoading}
           onEmailAuth={handleEmailAuth}
           onPasswordReset={handlePasswordReset}
+          activeWorkout={activeWorkout}
+          activeWorkoutLabel={activeWorkoutLabel}
+          activeWorkoutStartedLabel={activeWorkoutStartedLabel}
+          onResumeWorkout={resumeActiveWorkout}
+          onDismissActiveWorkout={handleClearActiveWorkout}
           onSignOut={handleSignOut}
           onExportBackup={handleExportBackup}
           onImportBackup={handleImportBackup}
@@ -525,6 +592,8 @@ export default function App() {
           onActiveTabChange={setSelectedDayTab}
           onOpenCalendar={() => setCurrentView('workoutCalendar')}
           onDeleteSession={handleDeleteWorkoutSession}
+          onSetActiveWorkout={handleSetActiveWorkout}
+          onClearActiveWorkout={handleClearActiveWorkout}
           onBack={() => setCurrentView('programDays')}
         />
       )}

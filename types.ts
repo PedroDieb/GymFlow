@@ -76,6 +76,12 @@ export interface WeeklyReviewData {
   motivationalQuote: string;
 }
 
+export interface ActiveWorkout {
+  programId: string;
+  dayTab: string;
+  startedAt: string;
+}
+
 export type ViewState = 'dashboard' | 'programList' | 'programDays' | 'tracker' | 'profile' | 'weeklyReview' | 'workoutCalendar';
 
 // Global declarations for the environment variables injected by the platform
